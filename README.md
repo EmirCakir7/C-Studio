@@ -122,6 +122,29 @@ C-Studio/
 
 ---
 
+## 🎖️ Atıflar ve Teşekkürler / Attributions & Acknowledgements
+
+C-Studio, açık kaynak dünyasındaki güçlü projeler, kütüphaneler ve topluluklar üzerine inşa edilmiştir. Katkılarından ötürü aşağıdaki projelere ve geliştiricilerine teşekkür ederiz:
+
+| Proje / Topluluk | Geliştirici / Kurum | Kullanım Alanı | Lisans |
+| :--- | :--- | :--- | :--- |
+| **[Tiny C Compiler (TCC)](https://bellard.org/tcc/)** | **Fabrice Bellard** & TCC Community | Dahili ultra-hızlı 64-bit C derleyicisi | [LGPL v2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) |
+| **[llama.cpp](https://github.com/ggerganov/llama.cpp)** | **Georgi Gerganov** & llama.cpp Contributors | Çevrimdışı yerel yapay zeka çıkarım motoru (`llama-server`) | [MIT License](https://github.com/ggerganov/llama.cpp/blob/master/LICENSE) |
+| **[Qwen 2.5 Coder](https://github.com/QwenLM/Qwen2.5-Coder)** | **Qwen Team / Alibaba Cloud** | Kod üretimi ve hata analizi sağlayan yapay zeka modeli | [Apache 2.0](https://github.com/QwenLM/Qwen2.5-Coder/blob/main/LICENSE) |
+| **[Flutter](https://flutter.dev/)** | **Google** & Flutter Contributors | Modern, reaktif masaüstü kullanıcı arayüzü çerçevesi | [BSD 3-Clause](https://github.com/flutter/flutter/blob/master/LICENSE) |
+| **[LLVM OpenMP (libomp)](https://openmp.llvm.org/)** | **LLVM Foundation** | Çok çekirdekli CPU paralelleştirme desteği | [Apache 2.0 with LLVM Exception](https://llvm.org/LICENSE.txt) |
+
+---
+
+## 👨‍💻 Geliştirici / Author
+
+- **Emir Çakır**
+  - GitHub: [@EmirCakir7](https://github.com/EmirCakir7)
+  - Proje Bağlantısı: [https://github.com/EmirCakir7/C-Studio](https://github.com/EmirCakir7/C-Studio)
+
+---
+
 ## 📄 Lisans / License
 
 Bu proje **MIT Lisansı** altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına göz atabilirsiniz.
+Proje içerisinde kullanılan dahili üçüncü parti bileşenler (TCC, llama.cpp, Qwen modeli vb.) kendi yukarıda belirtilen açık kaynak lisanslarına tabidir.
