@@ -69,7 +69,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
 
     return Container(
       color: const Color(0xFF13141C),
@@ -96,8 +96,8 @@ class _TerminalPanelState extends State<TerminalPanel> {
                 const SizedBox(width: 8),
                 Text(
                   widget.isRunning
-                      ? (isTr ? 'Program Çalışıyor...' : 'Program Running...')
-                      : (isTr ? 'Terminal Hazır' : 'Terminal Ready'),
+                      ? langService.trEnDe('Program Çalışıyor...', 'Program Running...', 'Programm läuft...')
+                      : langService.trEnDe('Terminal Hazır', 'Terminal Ready', 'Terminal bereit'),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -109,7 +109,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
                   OutlinedButton.icon(
                     icon: const Icon(Icons.stop_rounded, size: 13, color: Color(0xFFF7768E)),
                     label: Text(
-                      isTr ? 'Programı Durdur' : 'Stop Program',
+                      langService.trEnDe('Programı Durdur', 'Stop Program', 'Programm anhalten'),
                       style: const TextStyle(fontSize: 10.5, color: Color(0xFFF7768E)),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -123,7 +123,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
                   ElevatedButton.icon(
                     icon: const Icon(Icons.play_arrow_rounded, size: 15),
                     label: Text(
-                      isTr ? 'Programı Çalıştır (F5)' : 'Run Program (F5)',
+                      langService.trEnDe('Programı Çalıştır (F5)', 'Run Program (F5)', 'Programm ausführen (F5)'),
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -138,7 +138,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFF7982A9)),
-                  tooltip: isTr ? 'Terminali Temizle' : 'Clear Terminal',
+                  tooltip: langService.trEnDe('Terminali Temizle', 'Clear Terminal', 'Terminal leeren'),
                   onPressed: widget.onClear,
                   constraints: const BoxConstraints(),
                   padding: EdgeInsets.zero,
@@ -159,9 +159,11 @@ class _TerminalPanelState extends State<TerminalPanel> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            isTr
-                                ? 'Programınızı çalıştırmak için butona veya F5 tuşuna basın.\nÇıktılar ve sonuçlar burada canlı olarak görüntülenecektir.'
-                                : 'Press the button or F5 to run your program.\nOutput and results will appear here in real time.',
+                            langService.trEnDe(
+                              'Programınızı çalıştırmak için butona veya F5 tuşuna basın.\nÇıktılar ve sonuçlar burada canlı olarak görüntülenecektir.',
+                              'Press the button or F5 to run your program.\nOutput and results will appear here in real time.',
+                              'Drücken Sie die Taste oder F5, um das Programm auszuführen.\nAusgaben und Ergebnisse werden hier live angezeigt.',
+                            ),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF565F89), height: 1.5),
                           ),
@@ -170,7 +172,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
                             ElevatedButton.icon(
                               icon: const Icon(Icons.play_arrow_rounded, size: 18),
                               label: Text(
-                                isTr ? '▶ Programı Çalıştır (F5)' : '▶ Run Program (F5)',
+                                langService.trEnDe('▶ Programı Çalıştır (F5)', '▶ Run Program (F5)', '▶ Programm ausführen (F5)'),
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                               ),
                               style: ElevatedButton.styleFrom(
@@ -218,12 +220,16 @@ class _TerminalPanelState extends State<TerminalPanel> {
                     style: GoogleFonts.jetBrainsMono(fontSize: 12, color: Colors.white),
                     decoration: InputDecoration(
                       hintText: widget.isRunning
-                          ? (isTr
-                              ? 'Buraya girdi yazıp Enter\'a basın (scanf için)...'
-                              : 'Type input here and press Enter (for scanf)...')
-                          : (isTr
-                              ? 'Program çalışırken buradan girdi gönderebilirsiniz'
-                              : 'Send input here while program is running'),
+                          ? langService.trEnDe(
+                              'Buraya girdi yazıp Enter\'a basın (scanf için)...',
+                              'Type input here and press Enter (for scanf)...',
+                              'Eingabe eingeben und Enter drücken (für scanf)...',
+                            )
+                          : langService.trEnDe(
+                              'Program çalışırken buradan girdi gönderebilirsiniz',
+                              'Send input here while program is running',
+                              'Eingabe senden während das Programm läuft',
+                            ),
                       hintStyle: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF414868)),
                       border: InputBorder.none,
                       isDense: true,
@@ -234,7 +240,7 @@ class _TerminalPanelState extends State<TerminalPanel> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send_rounded, size: 14, color: Color(0xFF7AA2F7)),
-                  tooltip: isTr ? 'Gönder' : 'Send',
+                  tooltip: langService.trEnDe('Gönder', 'Send', 'Senden'),
                   onPressed: widget.isRunning ? _submitInput : null,
                   constraints: const BoxConstraints(),
                   padding: const EdgeInsets.symmetric(horizontal: 6),

@@ -8,6 +8,7 @@ class SpecialKeyItem {
   final int cursorOffset; // Imlecin eklenen metin sonundan geriye kaç karakter kayacağı
   final String? tooltip;
   final String? tooltipEn;
+  final String? tooltipDe;
   final Color? color;
   final bool isAccent;
 
@@ -17,13 +18,17 @@ class SpecialKeyItem {
     this.cursorOffset = 0,
     this.tooltip,
     this.tooltipEn,
+    this.tooltipDe,
     this.color,
     this.isAccent = false,
   });
 
-  String getDisplayTooltip(bool isTr) {
-    if (isTr) return tooltip ?? label;
-    return tooltipEn ?? tooltip ?? label;
+  String getDisplayTooltip(AppLanguageService langService) {
+    return langService.trEnDe(
+      tooltip ?? label,
+      tooltipEn ?? tooltip ?? label,
+      tooltipDe ?? tooltipEn ?? tooltip ?? label,
+    );
   }
 }
 
@@ -79,7 +84,7 @@ class SpecialKeysBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
 
     return Container(
       height: 38,
@@ -100,7 +105,7 @@ class SpecialKeysBar extends StatelessWidget {
                 const Icon(Icons.keyboard_outlined, size: 15, color: Color(0xFF7AA2F7)),
                 const SizedBox(width: 5),
                 Text(
-                  isTr ? 'Hızlı Tuşlar:' : 'Quick Keys:',
+                  langService.trEnDe('Hızlı Tuşlar:', 'Quick Keys:', 'Schnelltasten:'),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -121,7 +126,7 @@ class SpecialKeysBar extends StatelessWidget {
               itemBuilder: (context, index) {
                 final k = _keys[index];
                 return Tooltip(
-                  message: k.getDisplayTooltip(isTr),
+                  message: k.getDisplayTooltip(langService),
                   waitDuration: const Duration(milliseconds: 300),
                   child: InkWell(
                     onTap: () => onInsert(k.insertText, cursorOffset: k.cursorOffset),
@@ -156,7 +161,7 @@ class SpecialKeysBar extends StatelessWidget {
 
           // Kapatma Butonu (X)
           Tooltip(
-            message: isTr ? 'Hızlı Tuşları Gizle' : 'Hide Quick Keys',
+            message: langService.trEnDe('Hızlı Tuşları Gizle', 'Hide Quick Keys', 'Schnelltasten ausblenden'),
             child: InkWell(
               onTap: onClose,
               borderRadius: BorderRadius.circular(4),

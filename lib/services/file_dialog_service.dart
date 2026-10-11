@@ -50,13 +50,14 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     return null;
   }
 
-  static Future<String?> pickDirectory() async {
+  static Future<String?> pickDirectory({String? title}) async {
     if (!Platform.isWindows) return null;
     try {
-      const psCommand = '''
+      final desc = title ?? "C Projesi Klasorunu Secin";
+      final psCommand = '''
 [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
 \$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-\$dialog.Description = "C Projesi Klasorunu Secin"
+\$dialog.Description = "$desc"
 if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     Write-Output \$dialog.SelectedPath
@@ -66,6 +67,30 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
       if (result.exitCode == 0) {
         final path = (result.stdout as String).trim();
         if (path.isNotEmpty && Directory(path).existsSync()) {
+          return path;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<String?> pickCustomLanguageFile() async {
+    if (!Platform.isWindows) return null;
+    try {
+      const psCommand = '''
+[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+\$dialog = New-Object System.Windows.Forms.OpenFileDialog
+\$dialog.Filter = "C-Studio Language Pack (*.cstudio-lang;*.json)|*.cstudio-lang;*.json|All Files (*.*)|*.*"
+\$dialog.Title = "Select Language Pack / Dil Paketi Secin"
+if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    Write-Output \$dialog.FileName
+}
+''';
+      final result = await Process.run('powershell', ['-NoProfile', '-Command', psCommand]);
+      if (result.exitCode == 0) {
+        final path = (result.stdout as String).trim();
+        if (path.isNotEmpty && File(path).existsSync()) {
           return path;
         }
       }

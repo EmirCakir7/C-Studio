@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:path/path.dart' as p;
 import '../models/project_model.dart';
 import '../services/app_language_service.dart';
+import '../services/file_dialog_service.dart';
 
 class NewProjectDialog extends StatefulWidget {
   const NewProjectDialog({super.key});
@@ -13,16 +14,23 @@ class NewProjectDialog extends StatefulWidget {
 }
 
 class _NewProjectDialogState extends State<NewProjectDialog> {
-  final TextEditingController _nameController = TextEditingController(text: 'C_Projem');
+  late final TextEditingController _nameController;
   late final TextEditingController _pathController;
-  ProjectTemplate _selectedTemplate = ProjectModel.templates.first;
+  ProjectTemplate _selectedTemplate = ProjectModel.templates.first; // 1. Boş C Projesi varsayılan
 
   @override
   void initState() {
     super.initState();
+    final lang = AppLanguageService().uiLanguage;
+    final defaultName = lang == 'tr'
+        ? 'C_Projem'
+        : (lang == 'de' ? 'Mein_C_Projekt' : 'My_C_Project');
+    _nameController = TextEditingController(text: defaultName);
+
     final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
     final defaultDir = p.join(userProfile, 'Documents', 'CStudio_Projeleri');
     _pathController = TextEditingController(text: defaultDir);
+    _selectedTemplate = ProjectModel.templates.first;
   }
 
   @override
@@ -32,9 +40,37 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
     super.dispose();
   }
 
+  Future<void> _browseFolder() async {
+    final lang = AppLanguageService().uiLanguage;
+    final title = lang == 'tr'
+        ? 'C Projesi Kayıt Klasörünü Seçin'
+        : (lang == 'de' ? 'C-Projektordner auswählen' : 'Select C Project Directory');
+
+    final selected = await FileDialogService.pickDirectory(title: title);
+    if (selected != null && selected.isNotEmpty) {
+      setState(() {
+        _pathController.text = selected;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
+    final lang = langService.uiLanguage;
+
+    final dialogTitle = langService.trEnDe('Yeni C Projesi Başlat', 'Start New C Project', 'Neues C-Projekt starten');
+    final dialogSubtitle = langService.trEnDe(
+        'Projenizin adını ve başlangıç kod şablonunu belirleyin.',
+        'Set project name and choose starting template.',
+        'Projektname und Startvorlage festlegen.');
+    final projectNameLabel = langService.trEnDe('Proje Adı', 'Project Name', 'Projektname');
+    final projectDirLabel = langService.trEnDe('Kayıt Dizini', 'Project Directory', 'Projektverzeichnis');
+    final browseTooltip = langService.trEnDe('Klasör Seç (Gözat)', 'Browse Folder', 'Ordner durchsuchen');
+    final templateHeader = langService.trEnDe('Başlangıç Şablonunu Seçin', 'Select Starting Template', 'Startvorlage auswählen');
+    final codePreviewHeader = langService.trEnDe('Kod Önizleme (main.c)', 'Code Preview (main.c)', 'Code-Vorschau (main.c)');
+    final cancelLabel = langService.trEnDe('İptal', 'Cancel', 'Abbrechen');
+    final createLabel = langService.trEnDe('Projeyi Oluştur', 'Create Project', 'Projekt erstellen');
 
     return Dialog(
       backgroundColor: const Color(0xFF1A1B26),
@@ -43,8 +79,8 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         side: const BorderSide(color: Color(0xFF24283B), width: 1),
       ),
       child: Container(
-        width: 700,
-        height: 520,
+        width: 720,
+        height: 540,
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +101,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isTr ? 'Yeni C Projesi Başlat' : 'Start New C Project',
+                      dialogTitle,
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -73,9 +109,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                       ),
                     ),
                     Text(
-                      isTr
-                          ? 'Projenizin adını ve başlangıç kod şablonunu belirleyin.'
-                          : 'Set project name and choose starting template.',
+                      dialogSubtitle,
                       style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF7982A9)),
                     ),
                   ],
@@ -93,7 +127,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isTr ? 'Proje Adı' : 'Project Name',
+                        projectNameLabel,
                         style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFFC0CAF5)),
                       ),
                       const SizedBox(height: 6),
@@ -128,31 +162,54 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isTr ? 'Kayıt Dizini' : 'Project Directory',
+                        projectDirLabel,
                         style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFFC0CAF5)),
                       ),
                       const SizedBox(height: 6),
-                      TextField(
-                        controller: _pathController,
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: const Color(0xFF13141C),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: const BorderSide(color: Color(0xFF24283B)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _pathController,
+                              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                              decoration: InputDecoration(
+                                filled: true,
+                                fillColor: const Color(0xFF13141C),
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(color: Color(0xFF24283B)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(color: Color(0xFF24283B)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(color: Color(0xFF7AA2F7)),
+                                ),
+                              ),
+                            ),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: const BorderSide(color: Color(0xFF24283B)),
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: browseTooltip,
+                            child: InkWell(
+                              onTap: _browseFolder,
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.all(9),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F2335),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF7AA2F7).withValues(alpha: 0.4)),
+                                ),
+                                child: const Icon(Icons.folder_open_rounded, color: Color(0xFF7AA2F7), size: 18),
+                              ),
+                            ),
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                            borderSide: const BorderSide(color: Color(0xFF7AA2F7)),
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -162,95 +219,117 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
 
             const SizedBox(height: 16),
 
-            // Şablon Seçimi
-            Text(
-              isTr ? 'Başlangıç Şablonu Seçin' : 'Select Starting Template',
-              style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFFC0CAF5)),
-            ),
-            const SizedBox(height: 8),
-
+            // Şablon Seçimi & Kod Önizleme
             Expanded(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Şablon Listesi
-                  SizedBox(
-                    width: 310,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF13141C),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF24283B)),
-                      ),
-                      child: ListView.builder(
-                        itemCount: ProjectModel.templates.length,
-                        itemBuilder: (context, index) {
-                          final t = ProjectModel.templates[index];
-                          final isSel = _selectedTemplate == t;
-
-                          return InkWell(
-                            onTap: () => setState(() => _selectedTemplate = t),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isSel ? const Color(0xFF1F2335) : Colors.transparent,
-                                border: Border(
-                                  left: BorderSide(
-                                    color: isSel ? const Color(0xFF7AA2F7) : Colors.transparent,
-                                    width: 3,
-                                  ),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    t.getDisplayTitle(isTr),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12.5,
-                                      fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
-                                      color: isSel ? Colors.white : const Color(0xFFA9B1D6),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    t.getDisplayDescription(isTr),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10.5,
-                                      color: const Color(0xFF565F89),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                  // Sol: Şablon Listesi
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          templateHeader,
+                          style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFFC0CAF5)),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF13141C),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF24283B)),
                             ),
-                          );
-                        },
-                      ),
+                            child: ListView.separated(
+                              padding: const EdgeInsets.all(6),
+                              itemCount: ProjectModel.templates.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 4),
+                              itemBuilder: (context, index) {
+                                final t = ProjectModel.templates[index];
+                                final isSelected = t.id == _selectedTemplate.id;
+
+                                return InkWell(
+                                  onTap: () => setState(() => _selectedTemplate = t),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xFF1F2335) : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFF7AA2F7).withValues(alpha: 0.5) : Colors.transparent,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          t.getDisplayTitle(lang),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 12,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                            color: isSelected ? const Color(0xFF7AA2F7) : Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          t.getDisplayDescription(lang),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10.5,
+                                            color: const Color(0xFF7982A9),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
 
-                  // Şablon Kod Önizleme
+                  // Sağ: Şablon Kod Önizleme
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF13141C),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF24283B)),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          _selectedTemplate.initialCode,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 11,
-                            height: 1.45,
-                            color: const Color(0xFF9ECE6A),
+                    flex: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          codePreviewHeader,
+                          style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: const Color(0xFFC0CAF5)),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF13141C),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF24283B)),
+                            ),
+                            child: SingleChildScrollView(
+                              child: Text(
+                                _selectedTemplate.getCode(lang),
+                                style: GoogleFonts.jetBrainsMono(
+                                  fontSize: 11,
+                                  height: 1.45,
+                                  color: const Color(0xFF9ECE6A),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -268,12 +347,12 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF7982A9),
                   ),
-                  child: Text(isTr ? 'İptal' : 'Cancel'),
+                  child: Text(cancelLabel),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.check_rounded, size: 16),
-                  label: Text(isTr ? 'Projeyi Oluştur' : 'Create Project'),
+                  label: Text(createLabel),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7AA2F7),
                     foregroundColor: const Color(0xFF1A1B26),
@@ -294,7 +373,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
                     }
 
                     final mainFile = File(p.join(projDir, 'main.c'));
-                    mainFile.writeAsStringSync(_selectedTemplate.initialCode);
+                    mainFile.writeAsStringSync(_selectedTemplate.getCode(lang));
 
                     final proj = ProjectModel(
                       name: name,

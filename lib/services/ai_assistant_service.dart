@@ -37,10 +37,10 @@ class AiAssistantService {
   bool get isLocal => true;
   bool get isCloud => false;
 
-  // Dil: 'tr' (Türkçe) veya 'en' (English) - AppLanguageService ile merkezi senkronize
   String get language => AppLanguageService().aiLanguage;
   bool get isTurkish => AppLanguageService().isAiTurkish;
   bool get isEnglish => AppLanguageService().isAiEnglish;
+  bool get isGerman => AppLanguageService().isAiGerman;
 
   String get apiKey => '';
   bool get hasApiKey => false;
@@ -157,6 +157,22 @@ class AiAssistantService {
           '   - Kullanıcı koda ekleme yapılmasını istediğinde (örneğin döngü ekle, kullanıcıdan girdi al, fonksiyon yaz vb.), istenen eklemeleri koda entegre et ve güncellenmiş çalışan tam C kodunu ```c ve ``` blokları arasında ver.\n'
           '4. KODLAMA VE YAZILIM DIŞI KONULARI REDDETME:\n'
           '   - Kodlama ve yazılım dışındaki konulara (günlük sohbet, spor, yemek, siyaset vb.) KESİNLİKLE CEVAP VERME. Sadece "Ben C-Studio Akıllı Kod Asistanıyım. Yalnızca C programlama dili ve yazılım geliştirme konularında yardımcı olabilirim." cevabını ver.';
+    } else if (isGerman) {
+      return 'Du bist der C-Studio KI-Code-Assistent, ein Experte für C-Programmierung und Softwareentwicklung.\n'
+          'Antworte immer auf klarem, präzisem und verständlichem Deutsch.\n\n'
+          'Befolge strikt diese 4 Grundregeln:\n'
+          '1. FEHLERANALYSE & BEHEBUNG:\n'
+          '   - Wenn nach Fehlern gefragt wird oder ein Fehler im Code vorliegt, erkläre ihn anhand dieser 3 Punkte:\n'
+          '     • Wo: Datei, Zeilennummer und den genauen Codeausschnitt nennen.\n'
+          '     • Warum: Die Ursache und die verletzte C-Sprachregel genau erklären.\n'
+          '     • Wie behoben: Die Lösung Schritt für Schritt erklären und den vollständigen funktionierenden C-Code in ```c und ``` Blöcken bereitstellen.\n'
+          '2. C-WISSEN & FRAGEN:\n'
+          '   - Bei Fragen zu C-Konzepten (Pointer, Structs, Schleifen, Speicherverwaltung usw.) schrittweise und mit Beispielen erklären.\n'
+          '3. CODE-ERWEITERUNGEN:\n'
+          '   - Wenn der Benutzer Erweiterungen wünscht, integriere sie und gib den vollständigen aktualisierten Code in ```c und ``` Blöcken aus.\n'
+          '4. THEMEN FREMDER BEREICHE ABLEHNEN:\n'
+          '   - Antworte NICHT auf themenfremde Fragen. Antworte ausschließlich mit:\n'
+          '     "Ich bin der C-Studio KI-Code-Assistent. Ich kann nur bei Fragen zur C-Programmierung und Softwareentwicklung helfen."';
     } else {
       return 'You are C-Studio AI, an expert C programming assistant and software tutor.\n'
           'Always respond in clear, fluent English.\n\n'
@@ -184,9 +200,13 @@ class AiAssistantService {
   }) async {
     // 0. Kodlama / yazılım dışı konu kontrolü
     if (isNonCodingTopic(prompt)) {
-      return isTurkish
-          ? 'Ben C-Studio Akıllı Kod Asistanıyım. Yalnızca C programlama dili, yazılım geliştirme ve algoritmalarla ilgili konularda yardımcı olabilirim. C kodunuz veya programlama sorularınızı yanıtlamaktan memnuniyet duyarım! 🚀'
-          : 'I am C-Studio AI Assistant. I can only assist with C programming, software development, and algorithms. Feel free to ask any coding questions! 🚀';
+      if (isTurkish) {
+        return 'Ben C-Studio Akıllı Kod Asistanıyım. Yalnızca C programlama dili, yazılım geliştirme ve algoritmalarla ilgili konularda yardımcı olabilirim. C kodunuz veya programlama sorularınızı yanıtlamaktan memnuniyet duyarım! 🚀';
+      } else if (isGerman) {
+        return 'Ich bin der C-Studio KI-Code-Assistent. Ich kann nur bei Fragen zur C-Programmierung, Softwareentwicklung und Algorithmen helfen. Gerne beantworte ich Ihre Programmierfragen! 🚀';
+      } else {
+        return 'I am C-Studio AI Assistant. I can only assist with C programming, software development, and algorithms. Feel free to ask any coding questions! 🚀';
+      }
     }
 
     final sys = getEffectiveSystemInstruction(customInstruction: systemInstruction);
@@ -217,8 +237,11 @@ class AiAssistantService {
         isTurkish
             ? 'Dahili Yerel Yapay Zeka dosyaları bulunamadı!\n'
                 'Lütfen C-Studio klasöründe ai/runtime/llama-server.exe ve ai/models/*.gguf dosyalarının olduğundan emin olun.'
-            : 'Local AI engine files not found!\n'
-                'Please make sure ai/runtime/llama-server.exe and ai/models/*.gguf exist in the C-Studio directory.',
+            : (isGerman
+                ? 'Lokale KI-Dateien nicht gefunden!\n'
+                    'Bitte stellen Sie sicher, dass ai/runtime/llama-server.exe und ai/models/*.gguf im C-Studio-Verzeichnis vorhanden sind.'
+                : 'Local AI engine files not found!\n'
+                    'Please make sure ai/runtime/llama-server.exe and ai/models/*.gguf exist in the C-Studio directory.'),
       );
     }
 
@@ -246,14 +269,23 @@ class AiAssistantService {
             '1. Bu hata neden kaynaklandı? (Sade ve anlaşılır şekilde açıkla)\n'
             '2. Hatayı düzeltmek için ne yapılmalı?\n'
             '3. Hatanın düzeltilmiş tam halini ```c ve ``` blokları arasında göster.'
-        : 'In the following C code, the compiler reported this error:\n'
-            'File: ${error.fileName}, Line: ${error.line}, Column: ${error.column}\n'
-            'Error Message: ${error.message}\n'
-            'Raw Compiler Output: ${error.rawLine}\n\n'
-            'Please analyze this error:\n'
-            '1. Why did this error occur? (Explain simply and clearly)\n'
-            '2. How to fix it?\n'
-            '3. Show the complete corrected code inside ```c and ``` blocks.';
+        : (isGerman
+            ? 'Im folgenden C-Code hat der Compiler diesen Fehler gemeldet:\n'
+                'Datei: ${error.fileName}, Zeile: ${error.line}, Spalte: ${error.column}\n'
+                'Fehlermeldung: ${error.message}\n'
+                'Compiler-Ausgabe: ${error.rawLine}\n\n'
+                'Bitte analysiere diesen Fehler:\n'
+                '1. Warum ist dieser Fehler aufgetreten? (Einfach und klar erklären)\n'
+                '2. Wie wird der Fehler behoben?\n'
+                '3. Zeige den vollstaendigen korrigierten C-Code in ```c und ``` Bloecken.'
+            : 'In the following C code, the compiler reported this error:\n'
+                'File: ${error.fileName}, Line: ${error.line}, Column: ${error.column}\n'
+                'Error Message: ${error.message}\n'
+                'Raw Compiler Output: ${error.rawLine}\n\n'
+                'Please analyze this error:\n'
+                '1. Why did this error occur? (Explain simply and clearly)\n'
+                '2. How to fix it?\n'
+                '3. Show the complete corrected code inside ```c and ``` blocks.');
 
     return sendPrompt(prompt: prompt, currentCode: code);
   }

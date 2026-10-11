@@ -13,7 +13,6 @@ import 'services/auto_save_service.dart';
 import 'services/compiler_service.dart';
 import 'services/smart_error_advisor.dart';
 import 'services/local_ai_service.dart';
-import 'services/ai_assistant_service.dart';
 import 'services/app_language_service.dart';
 import 'widgets/code_editor.dart';
 import 'widgets/error_solution_panel.dart';
@@ -124,7 +123,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _statusMessage = _langService.isUiTurkish ? 'Hazır' : 'Ready';
+    _statusMessage = _langService.trEnDe('Hazır', 'Ready', 'Bereit');
     WidgetsBinding.instance.addObserver(this);
     _langService.addListener(_onLanguageChanged);
     _initDefaultProject();
@@ -149,8 +148,8 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   void _onLanguageChanged() {
     if (mounted) {
       setState(() {
-        if (_statusMessage == 'Hazır' || _statusMessage == 'Ready') {
-          _statusMessage = _langService.isUiTurkish ? 'Hazır' : 'Ready';
+        if (_statusMessage == 'Hazır' || _statusMessage == 'Ready' || _statusMessage == 'Bereit') {
+          _statusMessage = _langService.trEnDe('Hazır', 'Ready', 'Bereit');
         }
       });
     }
@@ -203,19 +202,19 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       }
     } catch (_) {}
 
-    // Eğer hiç proje yoksa veya Ilk_Projem yoksa oluştur
-    final defaultDir = p.join(projectsDir, 'Ilk_Projem');
-    if (!Directory(defaultDir).existsSync()) {
-      Directory(defaultDir).createSync(recursive: true);
-      final mainFile = File(p.join(defaultDir, 'main.c'));
-      mainFile.writeAsStringSync(ProjectModel.templates.first.initialCode);
-    }
-
-    if (!_projects.any((p) => p.name == 'Ilk_Projem')) {
+    // Eğer hiç proje yoksa oluştur
+    if (_projects.isEmpty) {
+      final defaultProjName = _langService.trEnDe('Ilk_Projem', 'My_First_Project', 'Mein_Erstes_Projekt');
+      final defaultDir = p.join(projectsDir, defaultProjName);
+      if (!Directory(defaultDir).existsSync()) {
+        Directory(defaultDir).createSync(recursive: true);
+        final mainFile = File(p.join(defaultDir, 'main.c'));
+        mainFile.writeAsStringSync(ProjectModel.templates.first.getCode(_langService.currentLanguage));
+      }
       _projects.insert(
         0,
         ProjectModel(
-          name: 'Ilk_Projem',
+          name: defaultProjName,
           rootDirectory: defaultDir,
           mainSourceFile: 'main.c',
           sourceFiles: ['main.c'],
@@ -310,10 +309,9 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     // Bekleyen tüm değişiklikleri diske kaydet
     _autoSaveService.saveAllDirty();
 
-    final isTr = _langService.isUiTurkish;
     setState(() {
       _isCompiling = true;
-      _statusMessage = isTr ? '⏳ Derleniyor...' : '⏳ Compiling...';
+      _statusMessage = _langService.trEnDe('⏳ Derleniyor...', '⏳ Compiling...', '⏳ Kompilieren...');
       _statusColor = const Color(0xFFD08770);
     });
 
@@ -371,22 +369,22 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       _isCompiling = false;
       _errors = parsed;
       _selectedError = parsed.isNotEmpty ? parsed.first : null;
-      _buildLog = '=== ${isTr ? "Derleme Raporu" : "Build Report"} (${DateFormat('HH:mm:ss').format(DateTime.now())}) ===\n'
-          '${isTr ? "Derleyici" : "Compiler"}: ${_compilerService.activeCompiler?.name ?? (isTr ? "Bilinmiyor" : "Unknown")}\n'
-          '${isTr ? "Derlenen Dosyalar" : "Compiled Files"}: ${sourceFiles.map((s) => p.basename(s)).join(', ')}\n'
-          '${isTr ? "Hedef" : "Target"}: $outExe\n'
-          '${isTr ? "Çıkış Kodu" : "Exit Code"}: ${res.exitCode}\n'
+      _buildLog = '=== ${_langService.trEnDe("Derleme Raporu", "Build Report", "Build-Bericht")} (${DateFormat('HH:mm:ss').format(DateTime.now())}) ===\n'
+          '${_langService.trEnDe("Derleyici", "Compiler", "Compiler")}: ${_compilerService.activeCompiler?.name ?? _langService.trEnDe("Bilinmiyor", "Unknown", "Unbekannt")}\n'
+          '${_langService.trEnDe("Derlenen Dosyalar", "Compiled Files", "Kompilierte Dateien")}: ${sourceFiles.map((s) => p.basename(s)).join(', ')}\n'
+          '${_langService.trEnDe("Hedef", "Target", "Ziel")}: $outExe\n'
+          '${_langService.trEnDe("Çıkış Kodu", "Exit Code", "Exit-Code")}: ${res.exitCode}\n'
           '----------------------------------------\n'
           '${res.output}';
 
       if (res.success) {
-        _statusMessage = isTr ? '✔ Derleme Başarılı! (F5 ile Çalıştır)' : '✔ Build Successful! (Press F5 to Run)';
+        _statusMessage = _langService.trEnDe('✔ Derleme Başarılı! (F5 ile Çalıştır)', '✔ Build Successful! (Press F5 to Run)', '✔ Kompilierung erfolgreich! (F5 zum Ausführen)');
         _statusColor = const Color(0xFF1E3A2F);
         // Başarılıysa Terminal sekmesine geç!
         _rightTabIndex = 0;
         _isRightPanelOpen = true;
       } else {
-        _statusMessage = isTr ? '❌ Derleme Hatası (${parsed.length} sorun)' : '❌ Build Error (${parsed.length} issues)';
+        _statusMessage = _langService.trEnDe('❌ Derleme Hatası (${parsed.length} sorun)', '❌ Build Error (${parsed.length} issues)', '❌ Kompilierungsfehler (${parsed.length} Probleme)');
         _statusColor = const Color(0xFF3E1F24);
         // Hata varsa Hatalar sekmesine odaklan!
         _rightTabIndex = 1;
@@ -404,17 +402,16 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   Future<void> _executeProgramDirectly() async {
     if (_currentProject == null) return;
     final outExe = _currentProject!.fullOutputPath;
-    final isTr = _langService.isUiTurkish;
 
     if (!File(outExe).existsSync()) {
-      _showSnackbar(isTr ? 'Çalıştırılabilir dosya bulunamadı: $outExe' : 'Executable file not found: $outExe', isError: true);
+      _showSnackbar(_langService.trEnDe('Çalıştırılabilir dosya bulunamadı: $outExe', 'Executable file not found: $outExe', 'Ausführbare Datei nicht gefunden: $outExe'), isError: true);
       return;
     }
 
     setState(() {
       _rightTabIndex = 0; // Doğrudan Terminal & Çıktı sekmesine geç
       _isRightPanelOpen = true;
-      _terminalOutput = '🚀 ${isTr ? "Program Başlatıldı" : "Program Started"}: ${p.basename(outExe)} [${DateFormat('HH:mm:ss').format(DateTime.now())}]\n'
+      _terminalOutput = '🚀 ${_langService.trEnDe("Program Başlatıldı", "Program Started", "Programm gestartet")}: ${p.basename(outExe)} [${DateFormat('HH:mm:ss').format(DateTime.now())}]\n'
           '--------------------------------------------------\n';
     });
 
@@ -442,7 +439,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         onError: (err) {
           if (mounted) {
             setState(() {
-              _terminalOutput += '\n[${isTr ? "Çıktı Hatası" : "Output Error"}: $err]\n';
+              _terminalOutput += '\n[${_langService.trEnDe("Çıktı Hatası", "Output Error", "Ausgabefehler")}: $err]\n';
             });
           }
         },
@@ -463,14 +460,14 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           setState(() {
             _runningProcess = null;
             _terminalOutput += '\n--------------------------------------------------\n'
-                '✔ ${isTr ? "Program tamamlandı" : "Program completed"} (${isTr ? "Çıkış Kodu" : "Exit Code"}: $code)\n';
+                '✔ ${_langService.trEnDe("Program tamamlandı", "Program completed", "Programm beendet")} (${_langService.trEnDe("Çıkış Kodu", "Exit Code", "Exit-Code")}: $code)\n';
           });
         }
       });
     } catch (e) {
       setState(() {
         _runningProcess = null;
-        _terminalOutput += '\n${isTr ? "Program çalıştırılırken hata oluştu" : "Error running program"}: $e\n';
+        _terminalOutput += '\n${_langService.trEnDe("Program çalıştırılırken hata oluştu", "Error running program", "Fehler beim Ausführen des Programms")}: $e\n';
       });
     }
   }
@@ -486,11 +483,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
 
   void _stopProgram() {
     if (_runningProcess != null) {
-      final isTr = _langService.isUiTurkish;
       _runningProcess!.kill();
       setState(() {
         _runningProcess = null;
-        _terminalOutput += '\n[⏹️ ${isTr ? "Program kullanıcı tarafından durduruldu" : "Program stopped by user"}]\n';
+        _terminalOutput += '\n[⏹️ ${_langService.trEnDe("Program kullanıcı tarafından durduruldu", "Program stopped by user", "Programm vom Benutzer gestoppt")}]\n';
       });
     }
   }
@@ -525,12 +521,12 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     if (original != fixed) {
       controller.text = fixed;
       _autoSaveService.saveFile(p.join(_currentProject!.rootDirectory, _activeFileName));
-      _showSnackbar(_langService.isUiTurkish ? '✔ Hata otomatik olarak düzeltildi!' : '✔ Error automatically fixed!', isError: false);
+      _showSnackbar(_langService.trEnDe('✔ Hata otomatik olarak düzeltildi!', '✔ Error automatically fixed!', '✔ Fehler automatisch behoben!'), isError: false);
 
       // Otomatik olarak yeniden derle
       _compileOnly();
     } else {
-      _showSnackbar(_langService.isUiTurkish ? 'Bu hata için otomatik düzeltme uygulanamadı.' : 'Automatic fix could not be applied for this error.', isError: true);
+      _showSnackbar(_langService.trEnDe('Bu hata için otomatik düzeltme uygulanamadı.', 'Automatic fix could not be applied for this error.', 'Automatische Behebung für diesen Fehler nicht verfügbar.'), isError: true);
     }
   }
 
@@ -540,22 +536,29 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       _isRightPanelOpen = true;
     });
 
-    final isTr = AiAssistantService().isTurkish;
-    final prompt = isTr
-        ? 'Aşağıdaki derleme hatasını analiz et:\n'
-            '• Nerede: Hatanın hangi dosyada ve kaçıncı satırda olduğunu belirt.\n'
-            '• Neden: Neden kaynaklandığını ve C kuralını açıkla.\n'
-            '• Nasıl Düzeltildiği: Çözümü anlat ve düzeltilmiş tam çalışan C kodunu ```c ve ``` blokları arasında ver.\n\n'
-            'Dosya: ${err.fileName}, Satır: ${err.line}\n'
-            'Hata Mesajı: ${err.message}\n'
-            'Ham Çıktı: ${err.rawLine}'
-        : 'Analyze the compiler error:\n'
-            '• Where: State file and line.\n'
-            '• Why: Explain the root cause and violated C rule.\n'
-            '• How It Was Fixed: Explain the fix and provide the complete working C code in ```c and ``` blocks.\n\n'
-            'File: ${err.fileName}, Line: ${err.line}\n'
-            'Error Message: ${err.message}\n'
-            'Raw Output: ${err.rawLine}';
+    final prompt = _langService.trEnDe(
+      'Aşağıdaki derleme hatasını analiz et:\n'
+      '• Nerede: Hatanın hangi dosyada ve kaçıncı satırda olduğunu belirt.\n'
+      '• Neden: Neden kaynaklandığını ve C kuralını açıkla.\n'
+      '• Nasıl Düzeltildiği: Çözümü anlat ve düzeltilmiş tam çalışan C kodunu ```c ve ``` blokları arasında ver.\n\n'
+      'Dosya: ${err.fileName}, Satır: ${err.line}\n'
+      'Hata Mesajı: ${err.message}\n'
+      'Ham Çıktı: ${err.rawLine}',
+      'Analyze the compiler error:\n'
+      '• Where: State file and line.\n'
+      '• Why: Explain the root cause and violated C rule.\n'
+      '• How It Was Fixed: Explain the fix and provide the complete working C code in ```c and ``` blocks.\n\n'
+      'File: ${err.fileName}, Line: ${err.line}\n'
+      'Error Message: ${err.message}\n'
+      'Raw Output: ${err.rawLine}',
+      'Analysiere den folgenden Compiler-Fehler:\n'
+      '• Wo: Datei und Zeile angeben.\n'
+      '• Warum: Ursache und verletzte C-Regel erklären.\n'
+      '• Wie zu beheben: Lösung erklären und den vollständigen funktionierenden C-Code in ```c und ``` Blöcken bereitstellen.\n\n'
+      'Datei: ${err.fileName}, Zeile: ${err.line}\n'
+      'Fehlermeldung: ${err.message}\n'
+      'Rohausgabe: ${err.rawLine}',
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _aiPanelKey.currentState?.sendUserPrompt(prompt);
@@ -567,7 +570,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     controller.text = code;
     _autoSaveService.saveFile(p.join(_currentProject!.rootDirectory, _activeFileName));
     _editorFocusNode.requestFocus();
-    _showSnackbar(_langService.isUiTurkish ? '✔ Editördeki kod yapay zeka önerisiyle güncellendi!' : '✔ Editor code successfully updated!', isError: false);
+    _showSnackbar(_langService.trEnDe('✔ Editördeki kod yapay zeka önerisiyle güncellendi!', '✔ Editor code successfully updated!', '✔ Editor-Code mit KI-Vorschlag aktualisiert!'), isError: false);
   }
 
   void _showSnackbar(String msg, {bool isError = false}) {
@@ -593,7 +596,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         }
       });
       _switchProject(proj);
-      _showSnackbar(_langService.isUiTurkish ? 'Yeni proje oluşturuldu: ${proj.name}' : 'New project created: ${proj.name}');
+      _showSnackbar(_langService.trEnDe('Yeni proje oluşturuldu: ${proj.name}', 'New project created: ${proj.name}', 'Neues Projekt erstellt: ${proj.name}'));
     }
   }
 
@@ -631,11 +634,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       _openFile(proj.mainSourceFile);
     });
 
-    _showSnackbar(_langService.isUiTurkish ? '✔ Aktif proje değiştirildi: ${proj.name}' : '✔ Active project switched: ${proj.name}');
+    _showSnackbar(_langService.trEnDe('✔ Aktif proje değiştirildi: ${proj.name}', '✔ Active project switched: ${proj.name}', '✔ Aktives Projekt gewechselt: ${proj.name}'));
   }
 
   Future<void> _renameProject(ProjectModel proj) async {
-    final isTr = _langService.isUiTurkish;
     final textController = TextEditingController(text: proj.name);
 
     final newName = await showDialog<String>(
@@ -652,7 +654,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               const Icon(Icons.edit_note_rounded, color: Color(0xFF7AA2F7), size: 20),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Projeyi Yeniden Adlandır' : 'Rename Project',
+                _langService.trEnDe('Projeyi Yeniden Adlandır', 'Rename Project', 'Projekt umbenennen'),
                 style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ],
@@ -662,7 +664,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isTr ? 'Yeni proje adını girin:' : 'Enter new project name:',
+                _langService.trEnDe('Yeni proje adını girin:', 'Enter new project name:', 'Neuen Projektnamen eingeben:'),
                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC0CAF5)),
               ),
               const SizedBox(height: 10),
@@ -682,7 +684,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(isTr ? 'İptal' : 'Cancel', style: const TextStyle(color: Color(0xFF7982A9))),
+              child: Text(_langService.trEnDe('İptal', 'Cancel', 'Abbrechen'), style: const TextStyle(color: Color(0xFF7982A9))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -694,7 +696,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                 if (name.isEmpty) return;
                 Navigator.of(context).pop(name);
               },
-              child: Text(isTr ? 'Yeniden Adlandır' : 'Rename'),
+              child: Text(_langService.trEnDe('Yeniden Adlandır', 'Rename', 'Umbenennen')),
             ),
           ],
         );
@@ -705,7 +707,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       setState(() {
         proj.name = newName;
       });
-      _showSnackbar(isTr ? '✔ Proje adı değiştirildi: $newName' : '✔ Project renamed: $newName');
+      _showSnackbar(_langService.trEnDe('✔ Proje adı değiştirildi: $newName', '✔ Project renamed: $newName', '✔ Projekt umbenannt: $newName'));
     }
   }
 
@@ -720,11 +722,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         _openFile(_currentProject!.mainSourceFile);
       }
     });
-    _showSnackbar(_langService.isUiTurkish ? 'Proje kapatıldı: ${proj.name}' : 'Project closed: ${proj.name}');
+    _showSnackbar(_langService.trEnDe('Proje kapatıldı: ${proj.name}', 'Project closed: ${proj.name}', 'Projekt geschlossen: ${proj.name}'));
   }
 
   void _showProjectSwitcherMenu(Offset position) async {
-    final isTr = _langService.isUiTurkish;
     final List<PopupMenuEntry<String>> menuItems = [];
 
     if (_projects.length > 1) {
@@ -732,7 +733,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         PopupMenuItem<String>(
           enabled: false,
           child: Text(
-            isTr ? 'AÇIK PROJELER' : 'OPEN PROJECTS',
+            _langService.trEnDe('AÇIK PROJELER', 'OPEN PROJECTS', 'OFFENE PROJEKTE'),
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF7AA2F7)),
           ),
         ),
@@ -779,7 +780,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           children: [
             const Icon(Icons.edit_rounded, size: 15, color: Color(0xFF7AA2F7)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Projeyi Yeniden Adlandır' : 'Rename Project', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              _langService.trEnDe('Projeyi Yeniden Adlandır', 'Rename Project', 'Projekt umbenennen'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -789,7 +793,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           children: [
             const Icon(Icons.create_new_folder_rounded, size: 15, color: Color(0xFF9ECE6A)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Yeni Proje Başlat...' : 'New Project...', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              _langService.trEnDe('Yeni Proje Başlat...', 'New Project...', 'Neues Projekt starten...'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -799,7 +806,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           children: [
             const Icon(Icons.folder_open_rounded, size: 15, color: Color(0xFFE0AF68)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Mevcut Projeyi Aç (Klasör)...' : 'Open Existing Project...', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              _langService.trEnDe('Mevcut Projeyi Aç (Klasör)...', 'Open Existing Project...', 'Bestehendes Projekt öffnen (Ordner)...'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -814,7 +824,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             children: [
               const Icon(Icons.close_rounded, size: 15, color: Color(0xFFF7768E)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Projeyi Kapat' : 'Close Project', style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E))),
+              Text(
+                _langService.trEnDe('Projeyi Kapat', 'Close Project', 'Projekt schließen'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E)),
+              ),
             ],
           ),
         ),
@@ -871,12 +884,14 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       _openFile(fileName);
 
       _showSnackbar(
-        _langService.isUiTurkish
-            ? '✔ Dosya başarıyla içe aktarıldı: $fileName'
-            : '✔ File successfully imported: $fileName',
+        _langService.trEnDe(
+          '✔ Dosya başarıyla içe aktarıldı: $fileName',
+          '✔ File successfully imported: $fileName',
+          '✔ Datei erfolgreich importiert: $fileName',
+        ),
       );
     } catch (e) {
-      _showSnackbar(_langService.isUiTurkish ? 'Dosya içe aktarılırken hata oluştu: $e' : 'Error importing file: $e', isError: true);
+      _showSnackbar(_langService.trEnDe('Dosya içe aktarılırken hata oluştu: $e', 'Error importing file: $e', 'Fehler beim Importieren der Datei: $e'), isError: true);
     }
   }
 
@@ -892,12 +907,14 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       final file = File(dest);
       await file.writeAsString(code);
       _showSnackbar(
-        _langService.isUiTurkish
-            ? '✔ Dosya başarıyla dışa aktarıldı: ${p.basename(dest)}'
-            : '✔ File successfully exported: ${p.basename(dest)}',
+        _langService.trEnDe(
+          '✔ Dosya başarıyla dışa aktarıldı: ${p.basename(dest)}',
+          '✔ File successfully exported: ${p.basename(dest)}',
+          '✔ Datei erfolgreich exportiert: ${p.basename(dest)}',
+        ),
       );
     } catch (e) {
-      _showSnackbar(_langService.isUiTurkish ? 'Dosya dışa aktarılırken hata oluştu: $e' : 'Error exporting file: $e', isError: true);
+      _showSnackbar(_langService.trEnDe('Dosya dışa aktarılırken hata oluştu: $e', 'Error exporting file: $e', 'Fehler beim Exportieren der Datei: $e'), isError: true);
     }
   }
 
@@ -905,7 +922,6 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   Future<void> _renameFile({String? targetFileName}) async {
     final fileToRename = targetFileName ?? _activeFileName;
     final textController = TextEditingController(text: fileToRename);
-    final isTr = _langService.isUiTurkish;
 
     final newName = await showDialog<String>(
       context: context,
@@ -921,7 +937,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               const Icon(Icons.edit_note_rounded, color: Color(0xFF7AA2F7), size: 20),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Dosyayı Yeniden Adlandır' : 'Rename File',
+                _langService.trEnDe('Dosyayı Yeniden Adlandır', 'Rename File', 'Datei umbenennen'),
                 style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ],
@@ -931,9 +947,11 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isTr
-                    ? 'Yeni dosya adını girin (.c veya .h uzantılı):'
-                    : 'Enter the new file name (with .c or .h extension):',
+                _langService.trEnDe(
+                  'Yeni dosya adını girin (.c veya .h uzantılı):',
+                  'Enter the new file name (with .c or .h extension):',
+                  'Neuen Dateinamen eingeben (mit .c oder .h Endung):',
+                ),
                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC0CAF5)),
               ),
               const SizedBox(height: 10),
@@ -953,7 +971,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(isTr ? 'İptal' : 'Cancel', style: const TextStyle(color: Color(0xFF7982A9))),
+              child: Text(_langService.trEnDe('İptal', 'Cancel', 'Abbrechen'), style: const TextStyle(color: Color(0xFF7982A9))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -969,7 +987,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                 }
                 Navigator.of(context).pop(name);
               },
-              child: Text(isTr ? 'Yeniden Adlandır' : 'Rename'),
+              child: Text(_langService.trEnDe('Yeniden Adlandır', 'Rename', 'Umbenennen')),
             ),
           ],
         );
@@ -1004,10 +1022,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         });
 
         _showSnackbar(
-          isTr ? '✔ Dosya adı değiştirildi: $newName' : '✔ File renamed: $newName',
+          _langService.trEnDe('✔ Dosya adı değiştirildi: $newName', '✔ File renamed: $newName', '✔ Datei umbenannt: $newName'),
         );
       } catch (e) {
-        _showSnackbar(_langService.isUiTurkish ? 'Yeniden adlandırılamadı: $e' : 'Could not rename: $e', isError: true);
+        _showSnackbar(_langService.trEnDe('Yeniden adlandırılamadı: $e', 'Could not rename: $e', 'Konnte nicht umbenannt werden: $e'), isError: true);
       }
     }
   }
@@ -1015,7 +1033,6 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   /// Dosya Sil (Sağ Tık İle Çağrılır)
   Future<void> _deleteFile(String fileName) async {
     if (_currentProject == null) return;
-    final isTr = _langService.isUiTurkish;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1030,26 +1047,28 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             const Icon(Icons.delete_outline_rounded, color: Color(0xFFF7768E), size: 20),
             const SizedBox(width: 8),
             Text(
-              isTr ? 'Dosyayı Sil' : 'Delete File',
+              _langService.trEnDe('Dosyayı Sil', 'Delete File', 'Datei löschen'),
               style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ],
         ),
         content: Text(
-          isTr
-              ? '"$fileName" dosyasını silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.'
-              : 'Are you sure you want to delete "$fileName"?\nThis action cannot be undone.',
+          _langService.trEnDe(
+            '"$fileName" dosyasını silmek istediğinizden emin misiniz?\nBu işlem geri alınamaz.',
+            'Are you sure you want to delete "$fileName"?\nThis action cannot be undone.',
+            'Sind Sie sicher, dass Sie "$fileName" löschen möchten?\nDiese Aktion kann nicht rückgängig gemacht werden.',
+          ),
           style: GoogleFonts.inter(fontSize: 12.5, color: const Color(0xFFC0CAF5)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(isTr ? 'İptal' : 'Cancel', style: const TextStyle(color: Color(0xFF7982A9))),
+            child: Text(_langService.trEnDe('İptal', 'Cancel', 'Abbrechen'), style: const TextStyle(color: Color(0xFF7982A9))),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF7768E)),
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(isTr ? 'Sil' : 'Delete', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text(_langService.trEnDe('Sil', 'Delete', 'Löschen'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1074,9 +1093,9 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           }
         });
 
-        _showSnackbar(isTr ? '✔ Dosya silindi: $fileName' : '✔ File deleted: $fileName');
+        _showSnackbar(_langService.trEnDe('✔ Dosya silindi: $fileName', '✔ File deleted: $fileName', '✔ Datei gelöscht: $fileName'));
       } catch (e) {
-        _showSnackbar(_langService.isUiTurkish ? 'Dosya silinemedi: $e' : 'Could not delete file: $e', isError: true);
+        _showSnackbar(_langService.trEnDe('Dosya silinemedi: $e', 'Could not delete file: $e', 'Datei konnte nicht gelöscht werden: $e'), isError: true);
       }
     }
   }
@@ -1084,9 +1103,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   /// Yeni Dosya Ekle (Kullanıcıya İsim Sorar)
   Future<void> _addFileToProject(String ext) async {
     if (_currentProject == null) return;
-    final isTr = _langService.isUiTurkish;
 
-    final base = ext == '.h' ? 'baslik' : 'kaynak';
+    final base = ext == '.h'
+        ? _langService.trEnDe('baslik', 'header', 'header')
+        : _langService.trEnDe('kaynak', 'source', 'quelle');
     int counter = 1;
     String defaultName = '$base$ext';
     while (File(p.join(_currentProject!.rootDirectory, defaultName)).existsSync()) {
@@ -1114,9 +1134,11 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               ),
               const SizedBox(width: 8),
               Text(
-                isTr
-                    ? (ext == '.h' ? 'Yeni Başlık Dosyası (.h)' : 'Yeni C Dosyası (.c)')
-                    : (ext == '.h' ? 'New Header File (.h)' : 'New C Source File (.c)'),
+                _langService.trEnDe(
+                  ext == '.h' ? 'Yeni Başlık Dosyası (.h)' : 'Yeni C Dosyası (.c)',
+                  ext == '.h' ? 'New Header File (.h)' : 'New C Source File (.c)',
+                  ext == '.h' ? 'Neue Header-Datei (.h)' : 'Neue C-Quelldatei (.c)',
+                ),
                 style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ],
@@ -1126,7 +1148,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isTr ? 'Oluşturulacak dosya adını girin:' : 'Enter the name of the new file:',
+                _langService.trEnDe('Oluşturulacak dosya adını girin:', 'Enter the name of the new file:', 'Namen der neuen Datei eingeben:'),
                 style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC0CAF5)),
               ),
               const SizedBox(height: 10),
@@ -1139,7 +1161,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                   fillColor: const Color(0xFF13141C),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  hintText: 'ornek$ext',
+                  hintText: 'beispiel$ext',
                   hintStyle: const TextStyle(color: Color(0xFF565F89)),
                 ),
               ),
@@ -1148,7 +1170,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text(isTr ? 'İptal' : 'Cancel', style: const TextStyle(color: Color(0xFF7982A9))),
+              child: Text(_langService.trEnDe('İptal', 'Cancel', 'Abbrechen'), style: const TextStyle(color: Color(0xFF7982A9))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -1163,7 +1185,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                 }
                 Navigator.of(context).pop(name);
               },
-              child: Text(isTr ? 'Oluştur' : 'Create'),
+              child: Text(_langService.trEnDe('Oluştur', 'Create', 'Erstellen')),
             ),
           ],
         );
@@ -1174,25 +1196,24 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
 
     final fullPath = p.join(_currentProject!.rootDirectory, fileName);
     if (File(fullPath).existsSync()) {
-      _showSnackbar(isTr ? 'Bu isimde bir dosya zaten mevcut!' : 'A file with this name already exists!', isError: true);
+      _showSnackbar(_langService.trEnDe('Bu isimde bir dosya zaten mevcut!', 'A file with this name already exists!', 'Eine Datei mit diesem Namen existiert bereits!'), isError: true);
       return;
     }
 
     final isH = fileName.endsWith('.h');
     final stem = p.basenameWithoutExtension(fileName).toUpperCase();
     final initText = isH
-        ? '#ifndef ${stem}_H\n#define ${stem}_H\n\n// Fonksiyon prototipleri\n\n#endif // ${stem}_H\n'
-        : '#include <stdio.h>\n\n// $fileName fonksiyonlari\n';
+        ? '#ifndef ${stem}_H\n#define ${stem}_H\n\n// ${_langService.trEnDe("Fonksiyon prototipleri", "Function prototypes", "Funktionsprototypen")}\n\n#endif // ${stem}_H\n'
+        : '#include <stdio.h>\n\n// $fileName ${_langService.trEnDe("fonksiyonlari", "functions", "Funktionen")}\n';
 
     File(fullPath).writeAsStringSync(initText);
     _currentProject!.refreshFiles();
     _openFile(fileName);
-    _showSnackbar(isTr ? '✔ Dosya oluşturuldu: $fileName' : '✔ File created: $fileName');
+    _showSnackbar(_langService.trEnDe('✔ Dosya oluşturuldu: $fileName', '✔ File created: $fileName', '✔ Datei erstellt: $fileName'));
   }
 
   /// Aktif sekme sağ tık menüsü (Yeniden Adlandır, Klasörde Göster, Sil)
   void _showTabContextMenu(Offset position) async {
-    final isTr = _langService.isUiTurkish;
     final totalFiles = (_currentProject?.sourceFiles.length ?? 0) + (_currentProject?.headerFiles.length ?? 0);
 
     final selected = await showMenu<String>(
@@ -1210,7 +1231,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             children: [
               const Icon(Icons.edit_rounded, size: 15, color: Color(0xFF7AA2F7)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Yeniden Adlandır' : 'Rename', style: const TextStyle(fontSize: 12, color: Colors.white)),
+              Text(
+                _langService.trEnDe('Yeniden Adlandır', 'Rename', 'Umbenennen'),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -1220,7 +1244,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             children: [
               const Icon(Icons.folder_open_rounded, size: 15, color: Color(0xFFE0AF68)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Dosya Konumunu Aç' : 'Reveal in Explorer', style: const TextStyle(fontSize: 12, color: Colors.white)),
+              Text(
+                _langService.trEnDe('Dosya Konumunu Aç', 'Reveal in Explorer', 'Im Explorer anzeigen'),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -1231,7 +1258,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               children: [
                 const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFF7768E)),
                 const SizedBox(width: 8),
-                Text(isTr ? 'Dosyayı Sil' : 'Delete File', style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E))),
+                Text(
+                  _langService.trEnDe('Dosyayı Sil', 'Delete File', 'Datei löschen'),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E)),
+                ),
               ],
             ),
           ),
@@ -1262,7 +1292,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         const SingleActivator(LogicalKeyboardKey.f6): _compileOnly,
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           _autoSaveService.saveAllDirty();
-          _showSnackbar(_langService.isUiTurkish ? 'Dosya kaydedildi.' : 'File saved.');
+          _showSnackbar(_langService.trEnDe('Dosya kaydedildi.', 'File saved.', 'Datei gespeichert.'));
         },
       },
       child: Focus(
@@ -1353,8 +1383,6 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   }
 
   Widget _buildTopBar() {
-    final isTr = _langService.isUiTurkish;
-
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1413,7 +1441,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 160),
                     child: Text(
-                      _currentProject?.name ?? (_langService.isUiTurkish ? 'Proje' : 'Project'),
+                      _currentProject?.name ?? _langService.trEnDe('Proje', 'Project', 'Projekt'),
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
                         fontSize: 11.5,
@@ -1433,28 +1461,28 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           // Dosya & Proje İşlemleri
           _buildToolButton(
             icon: Icons.create_new_folder_outlined,
-            label: isTr ? 'Yeni' : 'New',
+            label: _langService.trEnDe('Yeni', 'New', 'Neu'),
             onTap: _handleNewProject,
           ),
           const SizedBox(width: 4),
           _buildToolButton(
             icon: Icons.file_upload_outlined,
-            label: isTr ? 'İçe Aktar' : 'Import',
+            label: _langService.trEnDe('İçe Aktar', 'Import', 'Importieren'),
             onTap: _importFile,
           ),
           const SizedBox(width: 4),
           _buildToolButton(
             icon: Icons.file_download_outlined,
-            label: isTr ? 'Dışa Aktar' : 'Export',
+            label: _langService.trEnDe('Dışa Aktar', 'Export', 'Exportieren'),
             onTap: _exportFile,
           ),
           const SizedBox(width: 4),
           _buildToolButton(
             icon: Icons.save_outlined,
-            label: isTr ? 'Kaydet' : 'Save',
+            label: _langService.trEnDe('Kaydet', 'Save', 'Speichern'),
             onTap: () {
               _autoSaveService.saveAllDirty();
-              _showSnackbar(isTr ? 'Tüm dosyalar kaydedildi.' : 'All files saved.');
+              _showSnackbar(_langService.trEnDe('Tüm dosyalar kaydedildi.', 'All files saved.', 'Alle Dateien gespeichert.'));
             },
           ),
 
@@ -1474,7 +1502,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             label: Row(
               children: [
                 Text(
-                  isTr ? 'Derle & Çalıştır' : 'Build & Run',
+                  _langService.trEnDe('Derle & Çalıştır', 'Build & Run', 'Erstellen & Ausführen'),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 ),
                 const SizedBox(width: 6),
@@ -1504,7 +1532,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           OutlinedButton.icon(
             icon: const Icon(Icons.build_rounded, size: 13),
             label: Text(
-              isTr ? 'Derle (F6)' : 'Compile (F6)',
+              _langService.trEnDe('Derle (F6)', 'Compile (F6)', 'Kompilieren (F6)'),
               style: const TextStyle(fontSize: 11.5),
             ),
             style: OutlinedButton.styleFrom(
@@ -1565,7 +1593,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           // Ayarlar
           IconButton(
             icon: const Icon(Icons.settings_outlined, size: 18, color: Color(0xFF7982A9)),
-            tooltip: isTr ? 'Ayarlar' : 'Settings',
+            tooltip: _langService.trEnDe('Ayarlar', 'Settings', 'Einstellungen'),
             onPressed: () {
               showDialog(
                 context: context,
@@ -1581,7 +1609,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               size: 18,
               color: _isRightPanelOpen ? const Color(0xFF7AA2F7) : const Color(0xFF7982A9),
             ),
-            tooltip: isTr ? 'Sağ Paneli Aç/Kapat' : 'Toggle Right Panel',
+            tooltip: _langService.trEnDe('Sağ Paneli Aç/Kapat', 'Toggle Right Panel', 'Rechtes Panel umschalten'),
             onPressed: () {
               setState(() => _isRightPanelOpen = !_isRightPanelOpen);
             },
@@ -1645,8 +1673,6 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   }
 
   Widget _buildTabBar() {
-    final isTr = _langService.isUiTurkish;
-
     return Container(
       height: 34,
       color: const Color(0xFF13141C),
@@ -1689,9 +1715,11 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
 
           // Hızlı Tuşlar Sekmesi Aç/Kapat Butonu
           Tooltip(
-            message: isTr
-                ? 'Klavyede zor bulunan tuşlar paneli ({}, [], \\, |, ~, ->)'
-                : 'Special characters panel ({}, [], \\, |, ~, ->)',
+            message: _langService.trEnDe(
+              'Klavyede zor bulunan tuşlar paneli ({}, [], \\, |, ~, ->)',
+              'Special characters panel ({}, [], \\, |, ~, ->)',
+              'Sonderzeichen-Leiste ({}, [], \\, |, ~, ->)',
+            ),
             waitDuration: const Duration(milliseconds: 300),
             child: InkWell(
               onTap: () => setState(() => _showSpecialKeysBar = !_showSpecialKeysBar),
@@ -1720,7 +1748,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      isTr ? 'Hızlı Tuşlar' : 'Quick Keys',
+                      _langService.trEnDe('Hızlı Tuşlar', 'Quick Keys', 'Schnelltasten'),
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -1746,7 +1774,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               size: 16,
               color: const Color(0xFF7982A9),
             ),
-            tooltip: isTr ? 'Proje Gezginini Göster/Gizle' : 'Toggle Project Explorer',
+            tooltip: _langService.trEnDe('Proje Gezginini Göster/Gizle', 'Toggle Project Explorer', 'Projekt-Explorer umschalten'),
             onPressed: () => setState(() => _showProjectExplorer = !_showProjectExplorer),
             padding: const EdgeInsets.symmetric(horizontal: 6),
             constraints: const BoxConstraints(),
@@ -1770,8 +1798,6 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   }
 
   Widget _buildRightTabBar() {
-    final isTr = _langService.isUiTurkish;
-
     return Container(
       height: 36,
       color: const Color(0xFF16161E),
@@ -1783,31 +1809,31 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         children: [
           _buildRightTabItem(
             index: 0,
-            title: isTr ? '💻 Çıktı' : '💻 Output',
-            badge: _isProgramRunning ? (isTr ? 'ÇALIŞIYOR' : 'RUNNING') : null,
+            title: _langService.trEnDe('💻 Çıktı', '💻 Output', '💻 Ausgabe'),
+            badge: _isProgramRunning ? _langService.trEnDe('ÇALIŞIYOR', 'RUNNING', 'LÄUFT') : null,
             badgeColor: const Color(0xFF9ECE6A),
           ),
           const SizedBox(width: 4),
           _buildRightTabItem(
             index: 1,
-            title: isTr ? '⚠️ Hatalar' : '⚠️ Errors',
+            title: _langService.trEnDe('⚠️ Hatalar', '⚠️ Errors', '⚠️ Fehler'),
             badge: _errors.isNotEmpty ? '${_errors.length}' : null,
             badgeColor: _errors.any((e) => !e.isWarning) ? const Color(0xFFF7768E) : const Color(0xFFE0AF68),
           ),
           const SizedBox(width: 4),
           _buildRightTabItem(
             index: 2,
-            title: isTr ? '🤖 Yapay Zeka' : '🤖 AI',
+            title: _langService.trEnDe('🤖 Yapay Zeka', '🤖 AI', '🤖 KI'),
           ),
           const SizedBox(width: 4),
           _buildRightTabItem(
             index: 3,
-            title: isTr ? '📋 Kayıtlar' : '📋 Logs',
+            title: _langService.trEnDe('📋 Kayıtlar', '📋 Logs', '📋 Logs'),
           ),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF7982A9)),
-            tooltip: isTr ? 'Sağ Paneli Kapat' : 'Close Right Panel',
+            tooltip: _langService.trEnDe('Sağ Paneli Kapat', 'Close Right Panel', 'Rechtes Panel schließen'),
             onPressed: () {
               setState(() => _isRightPanelOpen = false);
             },
@@ -1887,7 +1913,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         ErrorSolutionPanel(
           errors: _errors,
           selectedError: _selectedError,
-          onErrorSelected: (err) {
+          onSelectError: (err) {
             setState(() => _selectedError = err);
             _jumpToError(err);
           },
@@ -1906,7 +1932,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
           padding: const EdgeInsets.all(12),
           child: SingleChildScrollView(
             child: SelectableText(
-              _buildLog.isEmpty ? (_langService.isUiTurkish ? 'Derleme raporu henüz oluşturulmadı.' : 'No build report generated yet.') : _buildLog,
+              _buildLog.isEmpty ? _langService.trEnDe('Derleme raporu henüz oluşturulmadı.', 'No build report generated yet.', 'Noch kein Build-Bericht erstellt.') : _buildLog,
               style: GoogleFonts.jetBrainsMono(fontSize: 11.5, color: const Color(0xFF7982A9), height: 1.4),
             ),
           ),
@@ -1947,8 +1973,8 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
               const SizedBox(width: 4),
               Text(
                 _autoSaveService.hasPendingChanges
-                    ? (_langService.isUiTurkish ? 'Kaydediliyor...' : 'Saving...')
-                    : '${_langService.isUiTurkish ? "Otomatik Kayıt: " : "Auto-Save: "}${_lastSavedTime.isNotEmpty ? _lastSavedTime : (_langService.isUiTurkish ? "Aktif" : "Active")}',
+                    ? _langService.trEnDe('Kaydediliyor...', 'Saving...', 'Wird gespeichert...')
+                    : '${_langService.trEnDe("Otomatik Kayıt: ", "Auto-Save: ", "Auto-Speichern: ")}${_lastSavedTime.isNotEmpty ? _lastSavedTime : _langService.trEnDe("Aktif", "Active", "Aktiv")}',
                 style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7982A9)),
               ),
             ],

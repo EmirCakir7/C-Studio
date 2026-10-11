@@ -10,24 +10,50 @@ class AppLanguageService extends ChangeNotifier {
     loadSettings();
   }
 
-  // 1. Uygulama Arayüz Dili ('tr' veya 'en')
+  // 1. Uygulama Arayüz Dili ('tr', 'en', 'de', 'custom')
   String _uiLanguage = 'tr';
   String get uiLanguage => _uiLanguage;
+  String get currentLanguage => _uiLanguage;
   bool get isUiTurkish => _uiLanguage == 'tr';
   bool get isUiEnglish => _uiLanguage == 'en';
+  bool get isUiGerman => _uiLanguage == 'de';
 
-  // 2. Yapay Zeka Asistan Dili ('tr' veya 'en')
+  // 2. Yapay Zeka Asistan Dili ('tr', 'en', 'de', 'custom')
   String _aiLanguage = 'tr';
   String get aiLanguage => _aiLanguage;
   bool get isAiTurkish => _aiLanguage == 'tr';
   bool get isAiEnglish => _aiLanguage == 'en';
+  bool get isAiGerman => _aiLanguage == 'de';
 
-  // Etiketler: TÜRKÇEDE BAYRAK VAR, İNGİLİZCEDE KESİNLİKLE BAYRAK YOK
+  // 3. Kullanıcı Tanımlı Özel Dil (Custom Language Pack)
+  String? _customLanguageName;
+  String? get customLanguageName => _customLanguageName;
+  bool get isCustomLanguage => _uiLanguage == 'custom';
+  bool get hasCustomLanguage => _customTranslations.isNotEmpty && _customLanguageName != null;
+  Map<String, String> _customTranslations = {};
+  Map<String, String> get customTranslations => _customTranslations;
+
+  // Etiketler: Türkçe ve Almancada bayrak var, İngilizcede kullanıcı isteği üzerine bayrak yok
   static const String turkishLabel = '🇹🇷 Türkçe';
-  static const String englishLabel = 'English'; // Kullanıcı isteği: İngilizcede bayrak olmasın
+  static const String englishLabel = 'English';
+  static const String germanLabel = '🇩🇪 Deutsch';
 
   static const String turkishShortLabel = '🇹🇷 TR';
-  static const String englishShortLabel = 'EN'; // Kullanıcı isteği: İngilizcede bayrak olmasın
+  static const String englishShortLabel = 'EN';
+  static const String germanShortLabel = '🇩🇪 DE';
+
+  /// Çok dilli metin seçici yardımcı fonksiyon (Özel dil desteğiyle)
+  String trEnDe(String tr, String en, String de) {
+    if (isCustomLanguage) {
+      final custom = _customTranslations[en] ?? _customTranslations[tr];
+      if (custom != null && custom.trim().isNotEmpty) {
+        return custom;
+      }
+    }
+    if (_uiLanguage == 'de') return de;
+    if (_uiLanguage == 'en') return en;
+    return tr;
+  }
 
   File _getConfigFile() {
     final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
@@ -38,7 +64,32 @@ class AppLanguageService extends ChangeNotifier {
     return File(p.join(configDir.path, 'app_settings.json'));
   }
 
+  File _getCustomLanguageFile() {
+    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
+    final configDir = Directory(p.join(userProfile, '.cstudio'));
+    if (!configDir.existsSync()) {
+      configDir.createSync(recursive: true);
+    }
+    return File(p.join(configDir.path, 'custom_language.json'));
+  }
+
   void loadSettings() {
+    try {
+      final customFile = _getCustomLanguageFile();
+      if (customFile.existsSync()) {
+        final content = customFile.readAsStringSync();
+        final data = jsonDecode(content);
+        if (data is Map) {
+          _customLanguageName = data['language_name']?.toString();
+          if (data['translations'] is Map) {
+            _customTranslations = (data['translations'] as Map).map(
+              (k, v) => MapEntry(k.toString(), v.toString()),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
     try {
       final file = _getConfigFile();
       if (file.existsSync()) {
@@ -46,10 +97,16 @@ class AppLanguageService extends ChangeNotifier {
         final data = jsonDecode(content);
         if (data is Map) {
           if (data.containsKey('uiLanguage')) {
-            _uiLanguage = data['uiLanguage'] as String;
+            final lang = data['uiLanguage'] as String;
+            if (lang == 'tr' || lang == 'en' || lang == 'de' || (lang == 'custom' && hasCustomLanguage)) {
+              _uiLanguage = lang;
+            }
           }
           if (data.containsKey('aiLanguage')) {
-            _aiLanguage = data['aiLanguage'] as String;
+            final lang = data['aiLanguage'] as String;
+            if (lang == 'tr' || lang == 'en' || lang == 'de' || lang == 'custom') {
+              _aiLanguage = lang;
+            }
           }
         }
       }
@@ -62,10 +119,56 @@ class AppLanguageService extends ChangeNotifier {
       final data = {
         'uiLanguage': _uiLanguage,
         'aiLanguage': _aiLanguage,
+        'customLanguageName': _customLanguageName,
         'updatedAt': DateTime.now().toIso8601String(),
       };
       file.writeAsStringSync(jsonEncode(data));
     } catch (_) {}
+  }
+
+  Future<bool> importCustomLanguageFile(String filePath, String languageName) async {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return false;
+      final content = await file.readAsString();
+      final data = jsonDecode(content);
+      if (data is! Map) return false;
+
+      final name = languageName.trim().isNotEmpty
+          ? languageName.trim()
+          : (data['language_name']?.toString() ?? 'Custom');
+
+      final rawTranslations = data['translations'] is Map
+          ? (data['translations'] as Map)
+          : data;
+
+      final Map<String, String> parsed = {};
+      rawTranslations.forEach((key, value) {
+        if (key != null && value != null && value.toString().trim().isNotEmpty) {
+          parsed[key.toString()] = value.toString();
+        }
+      });
+
+      if (parsed.isEmpty) return false;
+
+      _customLanguageName = name;
+      _customTranslations = parsed;
+      _uiLanguage = 'custom';
+
+      final customFile = _getCustomLanguageFile();
+      final out = {
+        'language_name': name,
+        'translations': parsed,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await customFile.writeAsString(jsonEncode(out));
+
+      saveSettings();
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void setUiLanguage(String lang, {bool syncAiLanguage = true}) {
@@ -100,7 +203,13 @@ class AppLanguageService extends ChangeNotifier {
   }
 
   String t(String key) {
-    return _strings[_uiLanguage]?[key] ?? _strings['tr']?[key] ?? key;
+    if (isCustomLanguage) {
+      final custom = _customTranslations[key];
+      if (custom != null && custom.trim().isNotEmpty) {
+        return custom;
+      }
+    }
+    return _strings[_uiLanguage]?[key] ?? _strings['en']?[key] ?? _strings['tr']?[key] ?? key;
   }
 
   static final Map<String, Map<String, String>> _strings = {
@@ -151,6 +260,13 @@ class AppLanguageService extends ChangeNotifier {
       'special_keys_tooltip': 'Klavyede zor bulunan tuşlar paneli ({}, [], \\, |, ~, ->)',
       'about_developer': 'C-Studio Modern C IDE v1.2',
       'tutor_policy_note': 'Eğitim & Hoca Kuralı: Asistan sıfırdan hazır kod/ödev yazmaz; algoritma adımlarını ve hata çözümlerini öğretir.',
+      'download_ai_model': '⬇️ AI Modelini İndir (~881 MB)',
+      'downloading_ai_model': 'AI Modeli İndiriliyor...',
+      'model_not_installed': 'Dahili Yapay Zeka Modeli Yüklü Değil',
+      'model_not_installed_desc': 'Akıllı hata analizi ve kod danışmanı için Qwen 2.5 Coder modelini tek tıkla indirin.',
+      'model_download_success': '✔ Model başarıyla indirildi ve aktif edildi!',
+      'download_failed': 'İndirme başarısız oldu',
+      'retry_download': 'Yeniden Dene',
     },
     'en': {
       'run': 'Run (F5)',
@@ -199,6 +315,68 @@ class AppLanguageService extends ChangeNotifier {
       'special_keys_tooltip': 'Panel for hard-to-reach keyboard characters ({}, [], \\, |, ~, ->)',
       'about_developer': 'C-Studio Modern C IDE v1.2',
       'tutor_policy_note': 'Course Policy: The tutor does not write full code or homework from scratch; it teaches logic, algorithms, and debugging.',
+      'download_ai_model': '⬇️ Download AI Model (~881 MB)',
+      'downloading_ai_model': 'Downloading AI Model...',
+      'model_not_installed': 'Offline AI Model Not Installed',
+      'model_not_installed_desc': 'Download Qwen 2.5 Coder with 1-click for smart error diagnostics and offline coding assistance.',
+      'model_download_success': '✔ Model downloaded and activated successfully!',
+      'download_failed': 'Download failed',
+      'retry_download': 'Retry',
+    },
+    'de': {
+      'run': 'Ausführen (F5)',
+      'compile_only': 'Nur kompilieren',
+      'ai_assistant': 'KI-Assistent',
+      'new_project': 'Neues Projekt',
+      'open_project': 'Projekt öffnen',
+      'settings': 'Einstellungen',
+      'project_explorer': 'PROJEKT-EXPLORER',
+      'files': 'DATEIEN',
+      'new_file': 'Neue Datei',
+      'save': 'Speichern',
+      'tab_terminal': 'Terminal & Ausgabe',
+      'tab_errors': 'Fehler & Intelligente Lösungen',
+      'tab_ai': '🤖 KI-Assistent',
+      'tab_logs': 'Kompilier-Protokolle',
+      'compiler': 'Compiler',
+      'line': 'Zeile',
+      'col': 'Spalte',
+      'saved': 'Gespeichert',
+      'unsaved': 'Nicht gespeichert',
+      'no_errors': 'Großartig! Keine Fehler oder Warnungen im Code gefunden.',
+      'press_f5': 'Drücken Sie F5, um Ihr Programm direkt zu kompilieren und auszuführen.',
+      'error_title': 'FEHLER- & LÖSUNGSANALYSE',
+      'why_happened': '❓ WARUM IST DAS PASSIERT?',
+      'how_to_fix': '🛠️ WIE WIRD ES BEHOBEN?',
+      'correct_example': '📝 KORREKTES CODE-BEISPIEL:',
+      'auto_fix': 'Automatisch beheben',
+      'ai_solve_explain': 'Mit KI analysieren & erklären',
+      'settings_title': 'C-Studio Einstellungen',
+      'settings_subtitle': 'Oberflächensprache, KI-Engine und Compiler-Einstellungen',
+      'tab_general': 'Allgemein',
+      'tab_ai_settings': 'KI-Assistent',
+      'tab_compiler_settings': 'Compiler',
+      'ui_language': 'Benutzeroberflächensprache',
+      'ai_language': 'KI-Assistentensprache',
+      'ai_engine': 'KI-Engine',
+      'offline_qwen': 'Integriert Offline (Qwen 2.5 Coder)',
+      'online_cloud': 'Online-Cloud-Engine (API)',
+      'cancel': 'Abbrechen',
+      'save_and_apply': 'Speichern und Anwenden',
+      'auto_save': 'Automatisches Speichern',
+      'auto_save_desc': 'Änderungen während der Eingabe automatisch speichern',
+      'font_size': 'Editor-Schriftgröße',
+      'special_keys': 'Sondertasten',
+      'special_keys_tooltip': 'Leiste für Tastatur-Sonderzeichen ({}, [], \\, |, ~, ->)',
+      'about_developer': 'C-Studio Moderne C-IDE v1.2',
+      'tutor_policy_note': 'Richtlinie: Der Assistent erklärt Fehler, beantwortet C-Fragen und hilft bei Algorithmen.',
+      'download_ai_model': '⬇️ KI-Modell herunterladen (~881 MB)',
+      'downloading_ai_model': 'KI-Modell wird heruntergeladen...',
+      'model_not_installed': 'Offline-KI-Modell nicht installiert',
+      'model_not_installed_desc': 'Laden Sie Qwen 2.5 Coder mit 1 Klick für intelligente Fehlerdiagnose und Offline-Hilfe herunter.',
+      'model_download_success': '✔ Modell erfolgreich heruntergeladen und aktiviert!',
+      'download_failed': 'Download fehlgeschlagen',
+      'retry_download': 'Wiederholen',
     },
   };
 }

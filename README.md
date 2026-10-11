@@ -73,14 +73,22 @@ Get the pre-built portable binaries directly from [**GitHub Releases**](https://
 ### ⌨️ Special Keys Toolbar
 - Quick-access touch/click bar for frequently needed programming symbols on international keyboards: `{}`, `[]`, `\`, `|`, `~`, `->`, `;`.
 
-### 🌐 Bilingual Interface (English & Turkish)
-- Seamlessly toggle the entire UI, terminal notices, compiler advisor, and AI assistant between English and Turkish.
-- Option to configure the AI tutor language independently from the IDE interface language.
+### 🌐 Multilingual Interface (English, Turkish, German & Custom Language Packs)
+- Seamlessly toggle the entire UI, toolbar, terminal notices, compiler advisor, and AI tutor between **English**, **🇹🇷 Türkçe**, and **🇩🇪 Deutsch**.
+- **Custom Language Pack Support (.cstudio-lang / .json):** Users can import their own custom language files. When imported, C-Studio prompts for the language name in English and applies the translation dynamically across all UI components.
+- **Standalone Language Creator Tool (`C-Studio_Language_Creator.exe`):** Includes a dedicated desktop tool pre-loaded with all C-Studio English strings, 1-click clipboard copy, Google Translate links, bulk copy/import, and 1-click direct application to C-Studio.
 
 ### 📁 Multi-Project & File Management
 - Manage multiple projects simultaneously with tabbed switching.
 - Create, rename, delete, import, and export `.c` source files and `.h` header files.
-- Built-in starter templates (Empty, Hello World, Calculator, Number Guessing Game, Loops & Arrays, Structs & Memory Management).
+- Modern directory browser integrating directly with native Windows File Explorer.
+- Built-in starter templates arranged logically:
+  1. **Empty C Project:** Clean, minimal starter template.
+  2. **Hello World:** Classic entry-level C program with standard I/O.
+  3. **User Input (`scanf`):** Safe string and number inputs.
+  4. **Array & Pointer Practice:** Array iteration and pointer arithmetic.
+  5. **Dynamic Memory (`malloc`/`free`):** Dynamic memory allocation and cleanup.
+  6. **Struct & Data Record:** Data structures and formatted output.
 
 ### 💾 Automatic Background Saving
 - Protects your work by automatically persisting unsaved edits to disk in real-time.
@@ -153,6 +161,37 @@ C-Studio/
 ├── compiler/              # Portable 64-bit Tiny C Compiler (TCC), headers & libs
 └── windows/               # Native Windows C++ Runner, window config & version resources
 ```
+
+---
+
+## 🗺️ Roadmap & Upcoming Plans (Next Version)
+
+Planned features and expansions currently in active development for upcoming releases:
+- 🌐 **Official Chinese (中文 - 简体) Localization:** Full native language pack and AI prompts.
+- 🇪🇸 **Official Spanish (Español) Localization:** Complete Spanish interface and diagnostic advisor.
+- 🇷🇺 **Official Russian (Русский) Localization:** Full Russian translation for IDE and code tutor.
+- 📱 **Official Android Version:** Bringing C-Studio's smart C coding environment, local compiler toolchain, and offline AI tutor to Android tablets and smartphones.
+
+---
+
+## 🇹🇷 Türkçe Açıklama & Hızlı Başlangıç
+
+**C-Studio**, C programlama dili öğrencileri, akademisyenler ve yazılım geliştiriciler için tasarlanmış modern, hafif ve tamamen çevrimdışı çalışabilen taşınabilir bir C IDE'sidir.
+
+### Temel Özellikler
+- **Kurulumsuz & Taşınabilir:** Tek bir klasörden veya USB bellekten doğrudan çalışır. Sistem `PATH` değişkeni veya MinGW kurulumu gerektirmez.
+- **Dahili Hızlı Derleyici (TCC 64-bit):** F5 tuşu ile kodlarınızı milisaniyeler içerisinde derler ve çalıştırır.
+- **100% Çevrimdışı Yapay Zeka Asistanı (Qwen 2.5 Coder 1.5B):** İnternet, API anahtarı veya üyelik gerektirmeden koddaki hataları analiz eder, açıklar ve çözüm önerir.
+- **Akıllı Hata & Çözüm Danışmanı:** Derleyici hatalarını (Nerede, Neden, Nasıl Düzeltilir) adım adım açıklar ve tek tıkla otomatik düzeltme sunar.
+- **Çok Dilli Arayüz & Özel Dil Desteği:** Türkçe, İngilizce ve Almanca desteğinin yanında, kullanıcıların istedikleri dile çevirebilmeleri için `C-Studio_Language_Creator.exe` çeviri aracı dahildir.
+- **Windows Explorer Klasör Seçimi:** Yeni proje oluştururken kayıt dizini doğrudan Windows dosya gezgininden seçilebilir.
+- **Uygulama İçi 1-Tık Model İndirme:** Model bulunamadığında doğrudan uygulama içinden tek tıkla canlı hız ve yüzde göstergesiyle modeli indirebilme.
+
+### 🗺️ Gelecek Sürümde Planlananlar
+- 🇨🇳 Resmi **Çince (中文)** dil desteği.
+- 🇪🇸 Resmi **İspanyolca (Español)** dil desteği.
+- 🇷🇺 Resmi **Rusça (Русский)** dil desteği.
+- 📱 Resmi **Android Sürümü** (tablet ve mobil cihazlarda taşınabilir C geliştirme ve çevrimdışı yapay zeka asistanı).
 
 ---
 

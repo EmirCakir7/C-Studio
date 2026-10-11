@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C-Studio Language Pack Creator & Translator</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --bg-darker: #13141c;
+      --card-bg: #1f2335;
+      --border: #292e42;
+      --primary: #7aa2f7;
+      --primary-hover: #89b4fa;
+      --accent: #bb9af7;
+      --green: #9ece6a;
+      --orange: #ff9e64;
+      --text: #c0caf5;
+      --text-muted: #7982a9;
+      --text-bright: #ffffff;
+      --code-bg: #16161e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 80px;
+    }
+
+    header {
+      background: var(--bg-darker);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 28px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 26px;
+      background: rgba(122, 162, 247, 0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid rgba(122, 162, 247, 0.3);
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #13141c;
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 0 12px rgba(122, 162, 247, 0.4);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #13141c;
+    }
+    .btn-accent:hover {
+      background: #cbb2f9;
+      box-shadow: 0 0 12px rgba(187, 154, 247, 0.4);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      background: var(--card-bg);
+      border-color: var(--primary);
+      color: var(--text-bright);
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 24px auto;
+      padding: 0 24px;
+    }
+
+    .guide-banner {
+      background: linear-gradient(135deg, rgba(122, 162, 247, 0.1) 0%, rgba(187, 154, 247, 0.08) 100%);
+      border: 1px solid rgba(122, 162, 247, 0.25);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+    }
+
+    .guide-banner h2 {
+      font-size: 16px;
+      color: var(--text-bright);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .step-card {
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .step-num {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      line-height: 22px;
+      text-align: center;
+      background: var(--primary);
+      color: #13141c;
+      font-weight: 700;
+      border-radius: 50%;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
+    .step-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Meta bar */
+    .meta-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .meta-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .meta-field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .input-text {
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-bright);
+      padding: 9px 14px;
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    .input-text:focus {
+      border-color: var(--primary);
+    }
+
+    .progress-box {
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .progress-bar-bg {
+      height: 10px;
+      background: var(--bg-darker);
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--green) 100%);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Controls bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tab-pill {
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .tab-pill.active, .tab-pill:hover {
+      background: var(--card-bg);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .search-input {
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-bright);
+      padding: 7px 12px;
+      font-size: 13px;
+      width: 260px;
+      outline: none;
+    }
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Categories & Cards */
+    .category-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .category-header {
+      background: rgba(19, 20, 28, 0.7);
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .category-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-badge {
+      font-size: 11px;
+      background: var(--border);
+      padding: 3px 8px;
+      border-radius: 10px;
+      color: var(--text);
+    }
+
+    .items-list {
+      padding: 14px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .string-card {
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+      transition: border-color 0.15s ease;
+    }
+    .string-card:hover {
+      border-color: rgba(122, 162, 247, 0.4);
+    }
+    .string-card.translated {
+      border-left: 3px solid var(--green);
+    }
+    .string-card.untranslated {
+      border-left: 3px solid var(--orange);
+    }
+
+    @media (max-width: 900px) {
+      .string-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .source-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .source-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .key-badge {
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      background: rgba(187, 154, 247, 0.15);
+      color: var(--accent);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(187, 154, 247, 0.3);
+    }
+
+    .source-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .source-text {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: var(--text-bright);
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: all;
+    }
+
+    .copy-btn {
+      font-size: 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .copy-btn:hover {
+      background: var(--border);
+      color: var(--text-bright);
+    }
+
+    .target-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .target-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .target-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .translate-link {
+      font-size: 11px;
+      color: var(--primary);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .translate-link:hover {
+      text-decoration: underline;
+    }
+
+    .target-input {
+      width: 100%;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #ffffff;
+      outline: none;
+      min-height: 40px;
+      resize: vertical;
+      font-family: inherit;
+      transition: border-color 0.15s ease;
+    }
+    .target-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 6px rgba(122, 162, 247, 0.25);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 640px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 12px;
+    }
+
+    .modal-textarea {
+      width: 100%;
+      height: 240px;
+      background: var(--bg-darker);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-bright);
+      padding: 12px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      outline: none;
+      resize: vertical;
+      margin-bottom: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--green);
+      color: #13141c;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      transform: translateY(10px);
+      z-index: 300;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🌐</div>
+      <div>
+        <div class="brand-title">C-Studio Language Pack Creator</div>
+        <div class="brand-subtitle">Translate C-Studio into any language & export as a custom pack</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="openBulkCopyModal()">📋 Bulk Copy English</button>
+      <button class="btn btn-outline" onclick="openBulkImportModal()">📥 Bulk Import / Paste</button>
+      <button class="btn btn-outline" onclick="document.getElementById('file-loader').click()">📂 Load File</button>
+      <input type="file" id="file-loader" accept=".cstudio-lang,.json" style="display:none;" onchange="handleFileLoad(event)">
+            <button class="btn btn-accent" onclick="applyDirectlyToCStudio()">⚡ Apply to C-Studio</button>
+      <button class="btn btn-primary" onclick="exportLanguagePack()">💾 Export Pack (.cstudio-lang)</button>
+  
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- GUIDE -->
+    <div class="guide-banner">
+      <h2>🚀 How It Works (Quick 4-Step Guide)</h2>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-title">Set Language Name</div>
+          <div class="step-desc">Enter the name of your language below (e.g. <b>Español</b>, <b>Français</b>, <b>Italiano</b>, <b>日本語</b>).</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-title">Translate the Texts</div>
+          <div class="step-desc">Copy English texts or click "Translate" to translate with Google Translate, then paste your translation.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-title">Export (.cstudio-lang)</div>
+          <div class="step-desc">Click <b>Export Pack (.cstudio-lang)</b> to download your translation file to your computer.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-title">Import in C-Studio</div>
+          <div class="step-desc">In C-Studio, go to <b>Settings ⚙️ &rarr; General</b>, click <b>Import File...</b>, type language name & hit Apply!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- METADATA & PROGRESS -->
+    <div class="meta-bar">
+      <div class="meta-field" style="flex: 1; max-width: 320px;">
+        <label for="lang-name-input">Target Language Name (e.g. Español, Français):</label>
+        <input type="text" id="lang-name-input" class="input-text" placeholder="e.g. Español" value="My Custom Language" oninput="updateStats()">
+      </div>
+      <div class="meta-field" style="flex: 1; max-width: 220px;">
+        <label for="lang-code-input">Language Code (e.g. es, fr, it):</label>
+        <input type="text" id="lang-code-input" class="input-text" placeholder="e.g. es" value="custom">
+      </div>
+      <div class="progress-box">
+        <div class="progress-header">
+          <span id="progress-text">Progress: 0 / 0</span>
+          <span id="progress-percent" style="color: var(--green);">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progress-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS & FILTER -->
+    <div class="controls-bar">
+      <div class="filter-tabs">
+        <button class="tab-pill active" onclick="setFilter('all', this)">All Strings (<span id="count-all">0</span>)</button>
+        <button class="tab-pill" onclick="setFilter('untranslated', this)">Untranslated (<span id="count-untranslated">0</span>)</button>
+        <button class="tab-pill" onclick="setFilter('translated', this)">Translated (<span id="count-translated">0</span>)</button>
+      </div>
+      <div>
+        <input type="text" id="search-box" class="search-input" placeholder="🔍 Search English or Key..." oninput="handleSearch()">
+      </div>
+    </div>
+
+    <!-- STRINGS LIST -->
+    <div id="sections-container"></div>
+
+  </div>
+
+  <!-- BULK COPY MODAL -->
+  <div id="bulk-copy-modal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">📋 Bulk Copy All English Strings</div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+        Copy all English lines below to easily translate them in ChatGPT, DeepL, or Google Translate in one shot:
+      </p>
+      <textarea id="bulk-copy-textarea" class="modal-textarea" readonly></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeBulkCopyModal()">Close</button>
+        <button class="btn btn-primary" onclick="copyBulkEnglishText()">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK IMPORT MODAL -->
+  <div id="bulk-import-modal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title">📥 Bulk Import / Paste Translations</div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+        Paste previously saved JSON or "English = Translation" lines here to populate all fields automatically:
+      </p>
+      <textarea id="bulk-import-textarea" class="modal-textarea" placeholder="Paste JSON or line-by-line translations here..."></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeBulkImportModal()">Cancel</button>
+        <button class="btn btn-accent" onclick="applyBulkImport()">Apply Translations</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast">✔ Notification</div>
+
+  <script>
+    const CATALOG = [{"category":"Header & Toolbar","items":[{"key":"run","en":"Run (F5)","desc":"Toolbar main execution button"},{"key":"compile_only","en":"Compile Only","desc":"Toolbar compile without running"},{"key":"ai_assistant","en":"AI Assistant","desc":"Toolbar AI panel toggle"},{"key":"new_project","en":"New Project","desc":"Toolbar new project button"},{"key":"open_project","en":"Open Project","desc":"Toolbar open project button"},{"key":"settings","en":"Settings","desc":"Toolbar settings dialog button"},{"key":"Project","en":"Project","desc":"Project menu / breadcrumb label"},{"key":"New","en":"New","desc":"New file / project quick button"},{"key":"Import","en":"Import","desc":"Import source files"},{"key":"Export","en":"Export","desc":"Export project files"},{"key":"Save","en":"Save","desc":"Save current file button"},{"key":"Build & Run","en":"Build & Run","desc":"Build and run action"},{"key":"Compile (F6)","en":"Compile (F6)","desc":"Compile shortcut tooltip"},{"key":"Toggle Right Panel","en":"Toggle Right Panel","desc":"Toggle right side panel"},{"key":"Toggle Project Explorer","en":"Toggle Project Explorer","desc":"Toggle project explorer"}]},{"category":"Project Explorer & Files","items":[{"key":"project_explorer","en":"PROJECT EXPLORER","desc":"Sidebar explorer title"},{"key":"files","en":"FILES","desc":"Files header in tree view"},{"key":"new_file","en":"New File","desc":"Create file button"},{"key":"No Project Opened","en":"No Project Opened","desc":"Empty state title when no project is open"},{"key":"projects open","en":"projects open","desc":"Indicator for open projects"},{"key":"SOURCE FILES (.c)","en":"SOURCE FILES (.c)","desc":"C source files tree section"},{"key":"HEADER FILES (.h)","en":"HEADER FILES (.h)","desc":"C header files tree section"},{"key":"No .h files yet","en":"No .h files yet","desc":"Empty header files message"},{"key":"Add .c","en":"Add .c","desc":"Quick add .c source file"},{"key":"Add .h","en":"Add .h","desc":"Quick add .h header file"},{"key":"Add New File","en":"Add New File","desc":"Add new file button"},{"key":"Delete","en":"Delete","desc":"File context menu delete"},{"key":"Reveal in Explorer","en":"Reveal in Explorer","desc":"File context menu open directory"},{"key":"Enter the name of the new file:","en":"Enter the name of the new file:","desc":"New file name input dialog prompt"},{"key":"Create","en":"Create","desc":"Confirm create button"},{"key":"A file with this name already exists!","en":"A file with this name already exists!","desc":"Duplicate file warning"},{"key":"Function prototypes","en":"Function prototypes","desc":"Header template comment"},{"key":"functions","en":"functions","desc":"Source file functions comment"},{"key":"File saved.","en":"File saved.","desc":"Save notification toast"},{"key":"All files saved.","en":"All files saved.","desc":"Save all notification toast"}]},{"category":"Editor & Status Bar","items":[{"key":"line","en":"Line","desc":"Status bar cursor line number"},{"key":"col","en":"Col","desc":"Status bar cursor column number"},{"key":"saved","en":"Saved","desc":"Status bar file saved indicator"},{"key":"unsaved","en":"Unsaved","desc":"Status bar file modified indicator"},{"key":"Saving...","en":"Saving...","desc":"Status bar saving in progress"},{"key":"Auto-Save: ","en":"Auto-Save: ","desc":"Status bar auto-save status prefix"},{"key":"Active","en":"Active","desc":"Status active label"},{"key":"Quick Keys:","en":"Quick Keys:","desc":"Quick keys toolbar header"},{"key":"Quick Keys","en":"Quick Keys","desc":"Quick keys toggle button label"},{"key":"Hide Quick Keys","en":"Hide Quick Keys","desc":"Hide quick keys toolbar"},{"key":"Special characters panel ({}, [], \\, |, ~, ->)","en":"Special characters panel ({}, [], \\, |, ~, ->)","desc":"Quick keys tooltip description"},{"key":"font_size","en":"Editor Font Size","desc":"Editor font size setting label"}]},{"category":"Terminal & Execution","items":[{"key":"tab_terminal","en":"Terminal & Output","desc":"Bottom panel terminal tab title"},{"key":"tab_logs","en":"Build Logs","desc":"Bottom panel compiler logs tab title"},{"key":"compiler","en":"Compiler","desc":"Compiler output label"},{"key":"💻 Output","en":"💻 Output","desc":"Terminal tab pill button"},{"key":"📋 Logs","en":"📋 Logs","desc":"Build logs tab pill button"},{"key":"RUNNING","en":"RUNNING","desc":"Program running status badge"},{"key":"Program Running...","en":"Program Running...","desc":"Execution banner when program is active"},{"key":"Terminal Ready","en":"Terminal Ready","desc":"Terminal ready status banner"},{"key":"Stop Program","en":"Stop Program","desc":"Stop running process button"},{"key":"Run Program (F5)","en":"Run Program (F5)","desc":"Run program action button"},{"key":"Clear Terminal","en":"Clear Terminal","desc":"Clear terminal output button"},{"key":"Press the button or F5 to run your program.\nOutput and results will appear here in real time.","en":"Press the button or F5 to run your program.\nOutput and results will appear here in real time.","desc":"Terminal idle placeholder prompt"},{"key":"▶ Run Program (F5)","en":"▶ Run Program (F5)","desc":"Terminal idle play button"},{"key":"Send input here while program is running","en":"Send input here while program is running","desc":"Terminal interactive input field hint"},{"key":"Send","en":"Send","desc":"Send standard input button"},{"key":"No build report generated yet.","en":"No build report generated yet.","desc":"Logs empty placeholder"}]},{"category":"Errors & Smart Solutions","items":[{"key":"tab_errors","en":"Errors & Smart Solutions","desc":"Errors tab title"},{"key":"⚠️ Errors","en":"⚠️ Errors","desc":"Errors tab badge button"},{"key":"no_errors","en":"Great! No errors or warnings found in your code.","desc":"Error-free code banner"},{"key":"press_f5","en":"You can press F5 to compile and run your program directly.","desc":"Error-free prompt instruction"},{"key":"error_title","en":"ERROR & SOLUTION ANALYSIS","desc":"Smart error card heading"},{"key":"why_happened","en":"❓ WHY DID IT HAPPEN?","desc":"Error cause section title"},{"key":"how_to_fix","en":"🛠️ HOW TO FIX IT?","desc":"Error resolution section title"},{"key":"correct_example","en":"📝 CORRECT CODE EXAMPLE:","desc":"Error solution example section title"},{"key":"auto_fix","en":"Auto Fix","desc":"One-click auto-fix button"},{"key":"ai_solve_explain","en":"Analyze & Explain with AI","desc":"Ask AI to explain error"},{"key":"Compiler Warning","en":"Compiler Warning","desc":"Compiler warning badge"},{"key":"Compiler Error","en":"Compiler Error","desc":"Compiler error badge"},{"key":"Ask AI (Explain & Fix)","en":"Ask AI (Explain & Fix)","desc":"Detailed AI error diagnosis button"},{"key":"📋 COMPILER MESSAGE:","en":"📋 COMPILER MESSAGE:","desc":"Raw compiler diagnostics header"},{"key":"💡 EXAMPLE CODE:","en":"💡 EXAMPLE CODE:","desc":"Correct syntax example heading"},{"key":"❌ Incorrect Usage:","en":"❌ Incorrect Usage:","desc":"Comparison incorrect code label"},{"key":"✅ Correct Usage:","en":"✅ Correct Usage:","desc":"Comparison correct code label"}]},{"category":"AI Assistant & Tutor","items":[{"key":"tab_ai","en":"🤖 AI Assistant","desc":"AI tab title in side panel"},{"key":"🤖 AI","en":"🤖 AI","desc":"AI tab pill button"},{"key":"AI Settings","en":"AI Settings","desc":"Open AI settings button"},{"key":"Clear Chat","en":"Clear Chat","desc":"Clear AI conversation history"},{"key":"Fix Bugs & Provide Working Code","en":"Fix Bugs & Provide Working Code","desc":"AI quick prompt 1 title"},{"key":"Detect all errors and bugs in my open C code, explain what went wrong, and provide the fully working corrected C code inside ```c and ``` code blocks.","en":"Detect all errors and bugs in my open C code, explain what went wrong, and provide the fully working corrected C code inside ```c and ``` code blocks.","desc":"AI quick prompt 1 content"},{"key":"Explain Line by Line","en":"Explain Line by Line","desc":"AI quick prompt 2 title"},{"key":"Explain what my open C code does, its algorithmic logic, and functions line-by-line in a clear manner.","en":"Explain what my open C code does, its algorithmic logic, and functions line-by-line in a clear manner.","desc":"AI quick prompt 2 content"},{"key":"Memory & Pointer Check","en":"Memory & Pointer Check","desc":"AI quick prompt 3 title"},{"key":"Inspect memory management (malloc/free), pointers, and array bounds in my C code. Point out potential leaks and show fixes.","en":"Inspect memory management (malloc/free), pointers, and array bounds in my C code. Point out potential leaks and show fixes.","desc":"AI quick prompt 3 content"},{"key":"Optimize Code","en":"Optimize Code","desc":"AI quick prompt 4 title"},{"key":"Optimize my open C code for better performance, safety, and cleaner structure, and provide the improved code inside ```c and ``` blocks.","en":"Optimize my open C code for better performance, safety, and cleaner structure, and provide the improved code inside ```c and ``` blocks.","desc":"AI quick prompt 4 content"},{"key":"Offline AI Tutor","en":"Offline AI Tutor","desc":"AI chat greeting header"},{"key":"Copy Full Response","en":"Copy Full Response","desc":"Copy entire AI answer"},{"key":"Response copied to clipboard","en":"Response copied to clipboard","desc":"Copy confirmation toast"},{"key":"C Snippet","en":"C Snippet","desc":"Code block header label"},{"key":"Replace in Editor","en":"Replace in Editor","desc":"Replace code in editor with snippet"},{"key":"Insert at Cursor","en":"Insert at Cursor","desc":"Insert snippet at editor cursor"},{"key":"Copy Code","en":"Copy Code","desc":"Copy code snippet"},{"key":"Code copied!","en":"Code copied!","desc":"Snippet copy toast"},{"key":"AI assistant is analyzing and reasoning...","en":"AI assistant is analyzing and reasoning...","desc":"AI thinking status indicator"},{"key":"Ask about C concepts, logic, or errors... (e.g. What is a pointer?)","en":"Ask about C concepts, logic, or errors... (e.g. What is a pointer?)","desc":"AI chat input placeholder"},{"key":"Ask","en":"Ask","desc":"Send question to AI button"},{"key":"Close Right Panel","en":"Close Right Panel","desc":"Close side panel button"},{"key":"download_ai_model","en":"⬇️ Download AI Model (~881 MB)","desc":"1-click AI model download button"},{"key":"downloading_ai_model","en":"Downloading AI Model...","desc":"AI model download in progress header"},{"key":"model_not_installed","en":"Offline AI Model Not Installed","desc":"Missing model banner title"},{"key":"model_not_installed_desc","en":"Download Qwen 2.5 Coder with 1-click for smart error diagnostics and offline coding assistance.","desc":"Missing model banner explanation"},{"key":"model_download_success","en":"✔ Model downloaded and activated successfully!","desc":"Download success banner"},{"key":"download_failed","en":"Download failed","desc":"Download error prefix"},{"key":"retry_download","en":"Retry","desc":"Retry download button"}]},{"category":"New Project & Templates","items":[{"key":"Start New C Project","en":"Start New C Project","desc":"New project modal dialog title"},{"key":"Set project name and choose starting template.","en":"Set project name and choose starting template.","desc":"New project modal subtitle"},{"key":"Project Name","en":"Project Name","desc":"Project name input field label"},{"key":"Project Directory","en":"Project Directory","desc":"Project directory input label"},{"key":"Browse Folder","en":"Browse Folder","desc":"Browse directory tooltip"},{"key":"Select Starting Template","en":"Select Starting Template","desc":"Template list section title"},{"key":"Code Preview (main.c)","en":"Code Preview (main.c)","desc":"Template preview code title"},{"key":"Cancel","en":"Cancel","desc":"Modal cancel button"},{"key":"Create Project","en":"Create Project","desc":"Create project submit button"},{"key":"Empty C Project","en":"Empty C Project","desc":"Template 1 title"},{"key":"Minimal empty main function, clean starting slate","en":"Minimal empty main function, clean starting slate","desc":"Template 1 description"},{"key":"Hello World","en":"Hello World","desc":"Template 2 title"},{"key":"Classic entry-level C program with standard I/O","en":"Classic entry-level C program with standard I/O","desc":"Template 2 description"},{"key":"User Input (scanf)","en":"User Input (scanf)","desc":"Template 3 title"},{"key":"Reading string and integer inputs safely from user","en":"Reading string and integer inputs safely from user","desc":"Template 3 description"},{"key":"Array & Pointer Practice","en":"Array & Pointer Practice","desc":"Template 4 title"},{"key":"Array iteration, memory access, and pointer arithmetic","en":"Array iteration, memory access, and pointer arithmetic","desc":"Template 4 description"},{"key":"Dynamic Memory (malloc/free)","en":"Dynamic Memory (malloc/free)","desc":"Template 5 title"},{"key":"Dynamic array allocation with malloc and free cleanup","en":"Dynamic array allocation with malloc and free cleanup","desc":"Template 5 description"},{"key":"Struct & Data Record","en":"Struct & Data Record","desc":"Template 6 title"},{"key":"Defining structs, arrays of records, and clean output","en":"Defining structs, arrays of records, and clean output","desc":"Template 6 description"}]},{"category":"Settings & About","items":[{"key":"C-Studio Settings","en":"C-Studio Settings","desc":"Settings dialog title"},{"key":"Interface language, AI assistant, and compiler preferences","en":"Interface language, AI assistant, and compiler preferences","desc":"Settings dialog subtitle"},{"key":"General","en":"General","desc":"Settings tab 1 title"},{"key":"AI Assistant","en":"AI Assistant","desc":"Settings tab 2 title"},{"key":"Compiler","en":"Compiler","desc":"Settings tab 3 title"},{"key":"Save and Apply","en":"Save and Apply","desc":"Save settings button"},{"key":"Application UI Language","en":"Application UI Language","desc":"UI language section heading"},{"key":"The language displayed on menus, buttons, and status bar","en":"The language displayed on menus, buttons, and status bar","desc":"UI language explanation"},{"key":"Custom Language Pack (.cstudio-lang / .json)","en":"Custom Language Pack (.cstudio-lang / .json)","desc":"Custom language pack card title"},{"key":"Import your own language file or open the translation tool","en":"Import your own language file or open the translation tool","desc":"Custom language pack card subtitle"},{"key":"Creator Tool","en":"Creator Tool","desc":"Open translation tool button"},{"key":"Import File...","en":"Import File...","desc":"Import language file button"},{"key":"Auto-Save","en":"Auto-Save","desc":"Auto-save section heading"},{"key":"Automatically saves code files in background as you type","en":"Automatically saves code files in background as you type","desc":"Auto-save description"},{"key":"Auto-save after each modification","en":"Auto-save after each modification","desc":"Auto-save toggle description"},{"key":"About","en":"About","desc":"About section heading"},{"key":"C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nSmart C language development environment for students and developers.","en":"C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nSmart C language development environment for students and developers.","desc":"About C-Studio text"},{"key":"AI Assistant Language","en":"AI Assistant Language","desc":"AI language section heading"},{"key":"The language used by the AI tutor to explain errors and chat (Independent of UI language)","en":"The language used by the AI tutor to explain errors and chat (Independent of UI language)","desc":"AI language explanation"},{"key":"The assistant explains errors (Where, Why, How), answers C questions, and adds requested features. Non-coding topics are declined.","en":"The assistant explains errors (Where, Why, How), answers C questions, and adds requested features. Non-coding topics are declined.","desc":"AI policy banner text"},{"key":"AI Engine","en":"AI Engine","desc":"AI engine section title"},{"key":"Built-in offline local model information","en":"Built-in offline local model information","desc":"AI engine section description"},{"key":"Built-in Offline (Qwen 2.5 Coder 1.5B)","en":"Built-in Offline (Qwen 2.5 Coder 1.5B)","desc":"Offline AI model name"},{"key":"FULLY OFFLINE","en":"FULLY OFFLINE","desc":"Offline badge text"},{"key":"No internet, external API key, or account required. All inferences run 100% locally on your machine.","en":"No internet, external API key, or account required. All inferences run 100% locally on your machine.","desc":"Offline inference description"},{"key":"Detected C Compiler","en":"Detected C Compiler","desc":"Compiler section heading"},{"key":"The toolchain that compiles and executes C source files","en":"The toolchain that compiles and executes C source files","desc":"Compiler description"},{"key":"Built-in & Portable","en":"Built-in & Portable","desc":"Compiler portable badge text"},{"key":"✓ cstudio_runtime.h buffering patch active: printf/scanf flush immediately.","en":"✓ cstudio_runtime.h buffering patch active: printf/scanf flush immediately.","desc":"Runtime patch notification message"}]}];
+
+    // Translation storage: key -> string
+    const userTranslations = {};
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    function init() {
+      renderSections();
+      updateStats();
+    }
+
+    function renderSections() {
+      const container = document.getElementById('sections-container');
+      container.innerHTML = '';
+
+      CATALOG.forEach((cat, catIdx) => {
+        const catSection = document.createElement('div');
+        catSection.className = 'category-section';
+        catSection.id = 'cat-section-' + catIdx;
+
+        let visibleCount = 0;
+        let totalCatItems = cat.items.length;
+
+        const itemsList = document.createElement('div');
+        itemsList.className = 'items-list';
+
+        cat.items.forEach(item => {
+          const val = userTranslations[item.en] ?? userTranslations[item.key] ?? '';
+          const isTranslated = val.trim().length > 0;
+
+          // Filtering
+          if (currentFilter === 'translated' && !isTranslated) return;
+          if (currentFilter === 'untranslated' && isTranslated) return;
+
+          // Search
+          if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            const matchEn = item.en.toLowerCase().includes(q);
+            const matchKey = item.key.toLowerCase().includes(q);
+            const matchDesc = (item.desc || '').toLowerCase().includes(q);
+            const matchVal = val.toLowerCase().includes(q);
+            if (!matchEn && !matchKey && !matchDesc && !matchVal) return;
+          }
+
+          visibleCount++;
+
+          const card = document.createElement('div');
+          card.className = 'string-card ' + (isTranslated ? 'translated' : 'untranslated');
+
+          const encodedEn = encodeURIComponent(item.en);
+          const gTranslateUrl = "https://translate.google.com/?sl=en&text=" + encodedEn;
+
+          card.innerHTML = `
+            <div class="source-box">
+              <div class="source-meta">
+                <span class="key-badge">${escapeHtml(item.key)}</span>
+                <span class="source-desc">${escapeHtml(item.desc || '')}</span>
+                <button class="copy-btn" onclick="copyText('${escapeAttr(item.en)}')">📋 Copy</button>
+              </div>
+              <div class="source-text">${escapeHtml(item.en)}</div>
+            </div>
+            <div class="target-box">
+              <div class="target-header">
+                <span class="target-label">Your Translation:</span>
+                <a href="${gTranslateUrl}" target="_blank" class="translate-link">🌐 Google Translate ↗</a>
+              </div>
+              <textarea class="target-input" placeholder="Type or paste translation here..."
+                data-key="${escapeAttr(item.key)}"
+                data-en="${escapeAttr(item.en)}"
+                oninput="onInputChange(this)">${escapeHtml(val)}</textarea>
+            </div>
+          `;
+          itemsList.appendChild(card);
+        });
+
+        if (visibleCount === 0 && (searchQuery || currentFilter !== 'all')) {
+          return; // Hide empty category when searching/filtering
+        }
+
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.innerHTML = `
+          <div class="category-title">
+            <span>${escapeHtml(cat.category)}</span>
+            <span class="category-badge">${visibleCount} / ${totalCatItems}</span>
+          </div>
+        `;
+        catSection.appendChild(header);
+        catSection.appendChild(itemsList);
+        container.appendChild(catSection);
+      });
+    }
+
+    function onInputChange(textarea) {
+      const en = textarea.getAttribute('data-en');
+      const key = textarea.getAttribute('data-key');
+      const val = textarea.value;
+
+      if (val.trim()) {
+        userTranslations[en] = val;
+        userTranslations[key] = val;
+      } else {
+        delete userTranslations[en];
+        delete userTranslations[key];
+      }
+
+      // Update card styling
+      const card = textarea.closest('.string-card');
+      if (val.trim()) {
+        card.classList.remove('untranslated');
+        card.classList.add('translated');
+      } else {
+        card.classList.remove('translated');
+        card.classList.add('untranslated');
+      }
+
+      updateStats();
+    }
+
+    function updateStats() {
+      let total = 0;
+      let translated = 0;
+
+      CATALOG.forEach(cat => {
+        cat.items.forEach(item => {
+          total++;
+          const val = userTranslations[item.en] ?? userTranslations[item.key];
+          if (val && val.trim().length > 0) {
+            translated++;
+          }
+        });
+      });
+
+      const untranslated = total - translated;
+      const percent = total > 0 ? Math.round((translated / total) * 100) : 0;
+
+      document.getElementById('count-all').innerText = total;
+      document.getElementById('count-translated').innerText = translated;
+      document.getElementById('count-untranslated').innerText = untranslated;
+
+      document.getElementById('progress-text').innerText = `Progress: ${translated} / ${total} translated`;
+      document.getElementById('progress-percent').innerText = `${percent}%`;
+      document.getElementById('progress-fill').style.width = `${percent}%`;
+    }
+
+    function setFilter(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab-pill').forEach(btn => btn.classList.remove('active'));
+      el.classList.add('active');
+      renderSections();
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('search-box').value.trim();
+      renderSections();
+    }
+
+    function exportLanguagePack() {
+      const langName = document.getElementById('lang-name-input').value.trim() || 'Custom Language';
+      const langCode = document.getElementById('lang-code-input').value.trim() || 'custom';
+
+      const translationMap = {};
+      CATALOG.forEach(cat => {
+        cat.items.forEach(item => {
+          const val = userTranslations[item.en] ?? userTranslations[item.key] ?? '';
+          if (val.trim()) {
+            translationMap[item.en] = val.trim();
+            translationMap[item.key] = val.trim();
+          }
+        });
+      });
+
+      const pack = {
+        language_name: langName,
+        language_code: langCode,
+        created_by: "C-Studio Language Creator",
+        created_at: new Date().toISOString(),
+        translations: translationMap
+      };
+
+      const jsonStr = JSON.stringify(pack, null, 2);
+      const safeName = langName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      const filename = `${safeName}.cstudio-lang`;
+
+      const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      saveLocallyDirectly(pack, filename);
+      showToast(`✔ "${filename}" exported successfully!`);
+    }
+
+    function handleFileLoad(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.language_name) {
+            document.getElementById('lang-name-input').value = data.language_name;
+          }
+          if (data.language_code) {
+            document.getElementById('lang-code-input').value = data.language_code;
+          }
+
+          const raw = data.translations || data;
+          Object.keys(raw).forEach(k => {
+            if (raw[k] && typeof raw[k] === 'string') {
+              userTranslations[k] = raw[k];
+            }
+          });
+
+          renderSections();
+          updateStats();
+          showToast(`✔ Loaded "${data.language_name || file.name}" successfully!`);
+        } catch (err) {
+          alert("Error parsing language file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Bulk Copy Modal
+    function openBulkCopyModal() {
+      const list = [];
+      CATALOG.forEach(cat => {
+        list.push(`--- ${cat.category} ---`);
+        cat.items.forEach(item => {
+          list.push(item.en);
+        });
+        list.push("");
+      });
+      document.getElementById('bulk-copy-textarea').value = list.join("\n");
+      document.getElementById('bulk-copy-modal').classList.add('open');
+    }
+
+    function closeBulkCopyModal() {
+      document.getElementById('bulk-copy-modal').classList.remove('open');
+    }
+
+    function copyBulkEnglishText() {
+      const ta = document.getElementById('bulk-copy-textarea');
+      ta.select();
+      navigator.clipboard.writeText(ta.value).then(() => {
+        showToast("✔ All English texts copied to clipboard!");
+        closeBulkCopyModal();
+      });
+    }
+
+    // Bulk Import Modal
+    function openBulkImportModal() {
+      document.getElementById('bulk-import-modal').classList.add('open');
+    }
+
+    function closeBulkImportModal() {
+      document.getElementById('bulk-import-modal').classList.remove('open');
+    }
+
+    function applyBulkImport() {
+      const text = document.getElementById('bulk-import-textarea').value.trim();
+      if (!text) return;
+
+      try {
+        if (text.startsWith("{")) {
+          const parsed = JSON.parse(text);
+          const raw = parsed.translations || parsed;
+          Object.keys(raw).forEach(k => {
+            if (typeof raw[k] === 'string') userTranslations[k] = raw[k];
+          });
+        } else {
+          // Line by line format: Source = Translation OR Source ||| Translation
+          const lines = text.split("\n");
+          lines.forEach(l => {
+            const sep = l.includes("|||") ? "|||" : (l.includes("=") ? "=" : null);
+            if (sep) {
+              const parts = l.split(sep);
+              const k = parts[0].trim();
+              const v = parts.slice(1).join(sep).trim();
+              if (k && v) userTranslations[k] = v;
+            }
+          });
+        }
+        renderSections();
+        updateStats();
+        closeBulkImportModal();
+        showToast("✔ Translations applied!");
+      } catch (err) {
+        alert("Error applying bulk translations: " + err.message);
+      }
+    }
+
+    function copyText(str) {
+      navigator.clipboard.writeText(str).then(() => {
+        showToast("Copied: " + str);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function escapeHtml(s) {
+      return (s || '')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function escapeAttr(s) {
+      return (s || '')
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+        // Native .exe Server integration
+    async function saveLocallyDirectly(pack, filename) {
+      try {
+        const res = await fetch('/api/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: filename, content: JSON.stringify(pack, null, 2) })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast('✔ Saved locally: ' + filename);
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function applyDirectlyToCStudio() {
+      const langName = document.getElementById('lang-name-input').value.trim() || 'Custom Language';
+      const langCode = document.getElementById('lang-code-input').value.trim() || 'custom';
+
+      const translationMap = {};
+      CATALOG.forEach(cat => {
+        cat.items.forEach(item => {
+          const val = userTranslations[item.en] ?? userTranslations[item.key] ?? '';
+          if (val.trim()) {
+            translationMap[item.en] = val.trim();
+            translationMap[item.key] = val.trim();
+          }
+        });
+      });
+
+      const pack = {
+        language_name: langName,
+        language_code: langCode,
+        created_by: "C-Studio Language Creator",
+        created_at: new Date().toISOString(),
+        translations: translationMap
+      };
+
+      try {
+        const res = await fetch('/api/apply-direct', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pack)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            showToast('⚡ Applied "' + langName + '" directly to C-Studio!');
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // Fallback: export pack
+      exportLanguagePack();
+    }
+
+    function closeAppWindow() {
+      fetch('/api/exit').catch(() => {});
+      window.close();
+    }
+  
+    window.onload = init;
+  </script>
+</body>
+</html>

@@ -38,7 +38,7 @@ class ProjectExplorer extends StatelessWidget {
   });
 
   void _showProjectMenu(BuildContext context, Offset position) async {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
     final allProjects = projects.isNotEmpty ? projects : (project != null ? [project!] : <ProjectModel>[]);
 
     final List<PopupMenuEntry<String>> menuItems = [];
@@ -48,7 +48,7 @@ class ProjectExplorer extends StatelessWidget {
         PopupMenuItem<String>(
           enabled: false,
           child: Text(
-            isTr ? 'AÇIK PROJELER' : 'OPEN PROJECTS',
+            langService.trEnDe('AÇIK PROJELER', 'OPEN PROJECTS', 'OFFENE PROJEKTE'),
             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF7AA2F7)),
           ),
         ),
@@ -95,7 +95,10 @@ class ProjectExplorer extends StatelessWidget {
           children: [
             const Icon(Icons.edit_rounded, size: 15, color: Color(0xFF7AA2F7)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Projeyi Yeniden Adlandır' : 'Rename Project', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              langService.trEnDe('Projeyi Yeniden Adlandır', 'Rename Project', 'Projekt umbenennen'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -105,7 +108,10 @@ class ProjectExplorer extends StatelessWidget {
           children: [
             const Icon(Icons.create_new_folder_rounded, size: 15, color: Color(0xFF9ECE6A)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Yeni Proje Başlat...' : 'New Project...', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              langService.trEnDe('Yeni Proje Başlat...', 'New Project...', 'Neues Projekt...'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -115,7 +121,10 @@ class ProjectExplorer extends StatelessWidget {
           children: [
             const Icon(Icons.folder_open_rounded, size: 15, color: Color(0xFFE0AF68)),
             const SizedBox(width: 8),
-            Text(isTr ? 'Mevcut Projeyi Aç (Klasör)...' : 'Open Existing Project...', style: const TextStyle(fontSize: 12, color: Colors.white)),
+            Text(
+              langService.trEnDe('Mevcut Projeyi Aç (Klasör)...', 'Open Existing Project...', 'Bestehendes Projekt öffnen...'),
+              style: const TextStyle(fontSize: 12, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -130,7 +139,10 @@ class ProjectExplorer extends StatelessWidget {
             children: [
               const Icon(Icons.close_rounded, size: 15, color: Color(0xFFF7768E)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Projeyi Kapat' : 'Close Project', style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E))),
+              Text(
+                langService.trEnDe('Projeyi Kapat', 'Close Project', 'Projekt schließen'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E)),
+              ),
             ],
           ),
         ),
@@ -165,7 +177,7 @@ class ProjectExplorer extends StatelessWidget {
   }
 
   void _showFileContextMenu(BuildContext context, Offset position, String fileName) async {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
     final selected = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx + 1, position.dy + 1),
@@ -181,7 +193,10 @@ class ProjectExplorer extends StatelessWidget {
             children: [
               const Icon(Icons.edit_rounded, size: 15, color: Color(0xFF7AA2F7)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Yeniden Adlandır' : 'Rename', style: const TextStyle(fontSize: 12, color: Colors.white)),
+              Text(
+                langService.trEnDe('Yeniden Adlandır', 'Rename', 'Umbenennen'),
+                style: const TextStyle(fontSize: 12, color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -191,7 +206,10 @@ class ProjectExplorer extends StatelessWidget {
             children: [
               const Icon(Icons.delete_outline_rounded, size: 15, color: Color(0xFFF7768E)),
               const SizedBox(width: 8),
-              Text(isTr ? 'Dosyayı Sil' : 'Delete File', style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E))),
+              Text(
+                langService.trEnDe('Dosyayı Sil', 'Delete File', 'Datei löschen'),
+                style: const TextStyle(fontSize: 12, color: Color(0xFFF7768E)),
+              ),
             ],
           ),
         ),
@@ -207,14 +225,14 @@ class ProjectExplorer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
 
     if (project == null) {
       return Container(
         color: const Color(0xFF13141C),
         alignment: Alignment.center,
         child: Text(
-          isTr ? 'Proje Açılmadı' : 'No Project Opened',
+          langService.trEnDe('Proje Açılmadı', 'No Project Opened', 'Kein Projekt geöffnet'),
           style: GoogleFonts.inter(color: const Color(0xFF565F89), fontSize: 13),
         ),
       );
@@ -255,7 +273,7 @@ class ProjectExplorer extends StatelessWidget {
                           ),
                           if (projects.length > 1)
                             Text(
-                              '${projects.length} ${isTr ? "proje açık" : "projects open"}',
+                              '${projects.length} ${langService.trEnDe("proje açık", "projects open", "Projekte geöffnet")}',
                               style: const TextStyle(fontSize: 10, color: Color(0xFF7982A9)),
                             ),
                         ],
@@ -275,7 +293,7 @@ class ProjectExplorer extends StatelessWidget {
               children: [
                 // Kaynak Dosyalar (.c)
                 _buildSectionHeader(
-                  isTr ? 'KAYNAK DOSYALAR (.c)' : 'SOURCE FILES (.c)',
+                  langService.trEnDe('KAYNAK DOSYALAR (.c)', 'SOURCE FILES (.c)', 'QUELLDATEIEN (.c)'),
                   onAddCFile,
                 ),
                 ...project!.sourceFiles.map((f) => _buildFileItem(context, f, isHeader: false)),
@@ -284,14 +302,14 @@ class ProjectExplorer extends StatelessWidget {
 
                 // Başlık Dosyaları (.h)
                 _buildSectionHeader(
-                  isTr ? 'BAŞLIK DOSYALARI (.h)' : 'HEADER FILES (.h)',
+                  langService.trEnDe('BAŞLIK DOSYALARI (.h)', 'HEADER FILES (.h)', 'HEADER-DATEIEN (.h)'),
                   onAddHFile,
                 ),
                 if (project!.headerFiles.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     child: Text(
-                      isTr ? 'Henüz .h dosyası yok' : 'No .h files yet',
+                      langService.trEnDe('Henüz .h dosyası yok', 'No .h files yet', 'Noch keine .h-Dateien'),
                       style: GoogleFonts.inter(color: const Color(0xFF414868), fontSize: 11),
                     ),
                   )
@@ -312,7 +330,10 @@ class ProjectExplorer extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.add, size: 13),
-                    label: Text(isTr ? '.c Ekle' : 'Add .c', style: const TextStyle(fontSize: 11)),
+                    label: Text(
+                      langService.trEnDe('.c Ekle', 'Add .c', '.c hinzufügen'),
+                      style: const TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF7AA2F7),
                       side: const BorderSide(color: Color(0xFF3B4261)),
@@ -326,7 +347,10 @@ class ProjectExplorer extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.add, size: 13),
-                    label: Text(isTr ? '.h Ekle' : 'Add .h', style: const TextStyle(fontSize: 11)),
+                    label: Text(
+                      langService.trEnDe('.h Ekle', 'Add .h', '.h hinzufügen'),
+                      style: const TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF7DCFFF),
                       side: const BorderSide(color: Color(0xFF3B4261)),
@@ -345,7 +369,7 @@ class ProjectExplorer extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(String title, VoidCallback onAdd) {
-    final isTr = AppLanguageService().isUiTurkish;
+    final langService = AppLanguageService();
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 4),
       child: Row(
@@ -362,7 +386,7 @@ class ProjectExplorer extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.add_rounded, size: 14, color: Color(0xFF7AA2F7)),
-            tooltip: isTr ? 'Yeni Dosya Ekle' : 'Add New File',
+            tooltip: langService.trEnDe('Yeni Dosya Ekle', 'Add New File', 'Neue Datei hinzufügen'),
             onPressed: onAdd,
             constraints: const BoxConstraints(),
             padding: EdgeInsets.zero,
@@ -373,54 +397,42 @@ class ProjectExplorer extends StatelessWidget {
   }
 
   Widget _buildFileItem(BuildContext context, String fileName, {required bool isHeader}) {
-    final isSelected = activeFile == fileName;
+    final isSelected = fileName == activeFile;
 
     return GestureDetector(
       onSecondaryTapDown: (details) => _showFileContextMenu(context, details.globalPosition, fileName),
       child: InkWell(
         onTap: () => onFileSelected(fileName),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1F2335) : Colors.transparent,
             border: Border(
               left: BorderSide(
                 color: isSelected ? const Color(0xFF7AA2F7) : Colors.transparent,
-                width: 3,
+                width: 2.5,
               ),
             ),
           ),
           child: Row(
             children: [
-              Container(
-                width: 18,
-                height: 18,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isHeader
-                      ? const Color(0xFFE0AF68).withValues(alpha: 0.15)
-                      : const Color(0xFF7AA2F7).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Text(
-                  isHeader ? 'H' : 'C',
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    color: isHeader ? const Color(0xFFE0AF68) : const Color(0xFF7AA2F7),
-                  ),
-                ),
+              Icon(
+                isHeader ? Icons.tag_rounded : Icons.description_rounded,
+                size: 15,
+                color: isSelected
+                    ? (isHeader ? const Color(0xFF7DCFFF) : const Color(0xFF7AA2F7))
+                    : const Color(0xFF565F89),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   fileName,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.jetBrainsMono(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     color: isSelected ? Colors.white : const Color(0xFFA9B1D6),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

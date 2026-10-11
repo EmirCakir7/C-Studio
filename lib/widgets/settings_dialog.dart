@@ -1,11 +1,17 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/app_language_service.dart';
+import 'package:path/path.dart' as p;
 import '../services/ai_assistant_service.dart';
+import '../services/app_language_service.dart';
 import '../services/compiler_service.dart';
+import '../services/file_dialog_service.dart';
+import 'ai_model_download_card.dart';
 
 class SettingsDialog extends StatefulWidget {
   final int initialTab;
+
   const SettingsDialog({super.key, this.initialTab = 0});
 
   @override
@@ -14,8 +20,8 @@ class SettingsDialog extends StatefulWidget {
 
 class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final AppLanguageService _langService = AppLanguageService();
   final AiAssistantService _aiService = AiAssistantService();
+  final AppLanguageService _langService = AppLanguageService();
   final CompilerService _compilerService = CompilerService();
 
   late String _selectedUiLanguage;
@@ -36,36 +42,190 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   void _saveAndApply() {
-    // 1. Dilleri kaydet
-    _langService.setUiLanguage(_selectedUiLanguage);
+    _langService.setUiLanguage(_selectedUiLanguage, syncAiLanguage: false);
     _langService.setAiLanguage(_selectedAiLanguage);
-
-    // 2. AI ayarlarını kaydet
-    _aiService.saveConfig(
-      provider: 'local',
-      language: _selectedAiLanguage,
-    );
-
     Navigator.of(context).pop(true);
+  }
+
+  Future<void> _handleImportCustomLanguage() async {
+    final path = await FileDialogService.pickCustomLanguageFile();
+    if (path == null) return;
+
+    try {
+      final file = File(path);
+      if (!file.existsSync()) return;
+      final content = await file.readAsString();
+      final data = jsonDecode(content);
+      if (data is! Map) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _langService.trEnDe('Geçersiz dil dosyası formatı!', 'Invalid language file format!', 'Ungültiges Sprachdateiformat!'),
+              ),
+              backgroundColor: const Color(0xFFF7768E),
+            ),
+          );
+        }
+        return;
+      }
+
+      String suggestedName = '';
+      if (data.containsKey('language_name') && data['language_name'] != null) {
+        suggestedName = data['language_name'].toString();
+      } else {
+        suggestedName = p.basenameWithoutExtension(path).replaceAll('.cstudio-lang', '');
+      }
+
+      final textController = TextEditingController(text: suggestedName);
+
+      if (!mounted) return;
+
+      // Ask for language name in English as requested by user
+      final languageName = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF16161E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: Color(0xFF24283B)),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.language_rounded, color: Color(0xFF7AA2F7), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Custom Language Name',
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter the display name for this language (e.g., Español, Français, Italiano):',
+                style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC0CAF5)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF13141C),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  hintText: 'e.g. Español',
+                  hintStyle: const TextStyle(color: Color(0xFF565F89)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF7982A9))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7AA2F7),
+                foregroundColor: const Color(0xFF13141C),
+              ),
+              onPressed: () {
+                final name = textController.text.trim();
+                Navigator.of(ctx).pop(name.isEmpty ? suggestedName : name);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      );
+
+      if (languageName == null || languageName.isEmpty) return;
+
+      final success = await _langService.importCustomLanguageFile(path, languageName);
+      if (success) {
+        setState(() {
+          _selectedUiLanguage = 'custom';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _langService.trEnDe(
+                  '✔ "$languageName" dili başarıyla uygulandı!',
+                  '✔ Language "$languageName" applied successfully!',
+                  '✔ Sprache "$languageName" erfolgreich angewendet!',
+                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: const Color(0xFF9ECE6A),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing language: $e'),
+            backgroundColor: const Color(0xFFF7768E),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openLanguageCreatorTool() {
+    try {
+      final exeCandidates = [
+        p.join(Directory.current.path, 'C-Studio_Language_Creator.exe'),
+        p.join(Directory.current.path, 'tools', 'language_creator', 'C-Studio_Language_Creator.exe'),
+        p.join(Directory.current.path, 'tools', 'language_translator', 'C-Studio_Language_Creator.exe'),
+      ];
+
+      for (final exePath in exeCandidates) {
+        if (File(exePath).existsSync()) {
+          Process.start(exePath, []);
+          return;
+        }
+      }
+
+      final htmlCandidates = [
+        p.join(Directory.current.path, 'C-Studio_Language_Pack_Creator.html'),
+        p.join(Directory.current.path, 'tools', 'language_translator', 'C-Studio_Language_Pack_Creator.html'),
+      ];
+
+      for (final c in htmlCandidates) {
+        if (File(c).existsSync()) {
+          Process.start('explorer.exe', [c]);
+          return;
+        }
+      }
+
+      Process.start('explorer.exe', [htmlCandidates.first]);
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    final isTr = _selectedUiLanguage == 'tr';
-
     return Dialog(
-      backgroundColor: const Color(0xFF16161E),
+      backgroundColor: const Color(0xFF1A1B26),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF24283B)),
+        side: const BorderSide(color: Color(0xFF24283B), width: 1),
       ),
       child: Container(
-        width: 640,
-        height: 560,
-        padding: const EdgeInsets.all(20),
+        width: 660,
+        height: 520,
+        padding: const EdgeInsets.all(22),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Üst Başlık
+            // 1. Başlık
             Row(
               children: [
                 Container(
@@ -73,27 +233,26 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                   decoration: BoxDecoration(
                     color: const Color(0xFF7AA2F7).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF7AA2F7).withValues(alpha: 0.3)),
                   ),
-                  child: const Icon(Icons.settings_rounded, color: Color(0xFF7AA2F7), size: 22),
+                  child: const Icon(Icons.tune_rounded, color: Color(0xFF7AA2F7), size: 20),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isTr ? 'C-Studio Ayarları' : 'C-Studio Settings',
-                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _langService.trEnDe('C-Studio Ayarları', 'C-Studio Settings', 'C-Studio Einstellungen'),
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    Text(
+                      _langService.trEnDe(
+                        'Arayüz dili, yapay zeka asistanı ve derleyici tercihleri',
+                        'Interface language, AI assistant, and compiler preferences',
+                        'Oberflächensprache, KI-Assistent und Compiler-Einstellungen',
                       ),
-                      Text(
-                        isTr
-                            ? 'Uygulama arayüz dili, yapay zeka motoru ve derleyici tercihleri'
-                            : 'Application UI language, AI engine, and compiler preferences',
-                        style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF7982A9)),
-                      ),
-                    ],
-                  ),
+                      style: GoogleFonts.inter(fontSize: 11.5, color: const Color(0xFF7982A9)),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -117,9 +276,18 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 unselectedLabelColor: const Color(0xFF7982A9),
                 labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
                 tabs: [
-                  Tab(icon: const Icon(Icons.tune_rounded, size: 16), text: isTr ? 'Genel' : 'General'),
-                  Tab(icon: const Icon(Icons.psychology_rounded, size: 16), text: isTr ? 'Yapay Zeka' : 'AI Assistant'),
-                  Tab(icon: const Icon(Icons.memory_rounded, size: 16), text: isTr ? 'Derleyici' : 'Compiler'),
+                  Tab(
+                    icon: const Icon(Icons.tune_rounded, size: 16),
+                    text: _langService.trEnDe('Genel', 'General', 'Allgemein'),
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.psychology_rounded, size: 16),
+                    text: _langService.trEnDe('Yapay Zeka', 'AI Assistant', 'KI-Assistent'),
+                  ),
+                  Tab(
+                    icon: const Icon(Icons.memory_rounded, size: 16),
+                    text: _langService.trEnDe('Derleyici', 'Compiler', 'Compiler'),
+                  ),
                 ],
               ),
             ),
@@ -130,9 +298,9 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildGeneralTab(isTr),
-                  _buildAiTab(isTr),
-                  _buildCompilerTab(isTr),
+                  _buildGeneralTab(),
+                  _buildAiTab(),
+                  _buildCompilerTab(),
                 ],
               ),
             ),
@@ -144,12 +312,15 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(isTr ? 'İptal' : 'Cancel', style: const TextStyle(color: Color(0xFF7982A9))),
+                  child: Text(
+                    _langService.trEnDe('İptal', 'Cancel', 'Abbrechen'),
+                    style: const TextStyle(color: Color(0xFF7982A9)),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.check_rounded, size: 16),
-                  label: Text(isTr ? 'Kaydet ve Uygula' : 'Save and Apply'),
+                  label: Text(_langService.trEnDe('Kaydet ve Uygula', 'Save and Apply', 'Speichern und Anwenden')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7AA2F7),
                     foregroundColor: const Color(0xFF13141C),
@@ -167,23 +338,25 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   // TAB 1: GENEL AYARLAR
-  Widget _buildGeneralTab(bool isTr) {
+  Widget _buildGeneralTab() {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader(
-            title: isTr ? 'Uygulama Arayüz Dili' : 'Application UI Language',
-            subtitle: isTr
-                ? 'Menülerin, butonların ve durum çubuğunun görüntüleneceği dil'
-                : 'The language displayed on menus, buttons, and status bar',
+            title: _langService.trEnDe('Uygulama Arayüz Dili', 'Application UI Language', 'Benutzeroberflächensprache'),
+            subtitle: _langService.trEnDe(
+              'Menülerin, butonların ve durum çubuğunun görüntüleneceği dil',
+              'The language displayed on menus, buttons, and status bar',
+              'Die für Menüs, Schaltflächen und Statusleiste verwendete Sprache',
+            ),
             icon: Icons.language_rounded,
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               _buildLanguageOptionCard(
-                label: AppLanguageService.turkishLabel, // 🇹🇷 Türkçe (Bayrak VAR)
+                label: AppLanguageService.turkishLabel,
                 isSelected: _selectedUiLanguage == 'tr',
                 onTap: () {
                   setState(() {
@@ -192,9 +365,9 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                   });
                 },
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               _buildLanguageOptionCard(
-                label: AppLanguageService.englishLabel, // English (Kesinlikle bayrak YOK)
+                label: AppLanguageService.englishLabel,
                 isSelected: _selectedUiLanguage == 'en',
                 onTap: () {
                   setState(() {
@@ -203,15 +376,115 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                   });
                 },
               ),
+              const SizedBox(width: 8),
+              _buildLanguageOptionCard(
+                label: AppLanguageService.germanLabel,
+                isSelected: _selectedUiLanguage == 'de',
+                onTap: () {
+                  setState(() {
+                    _selectedUiLanguage = 'de';
+                    _selectedAiLanguage = 'de';
+                  });
+                },
+              ),
+              if (_langService.hasCustomLanguage || _selectedUiLanguage == 'custom') ...[
+                const SizedBox(width: 8),
+                _buildLanguageOptionCard(
+                  label: '🌐 ${_langService.customLanguageName ?? "Custom"}',
+                  isSelected: _selectedUiLanguage == 'custom',
+                  onTap: () {
+                    setState(() {
+                      _selectedUiLanguage = 'custom';
+                      _selectedAiLanguage = 'custom';
+                    });
+                  },
+                ),
+              ],
             ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF13141C),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF24283B)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFBB9AF7).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.file_upload_outlined, color: Color(0xFFBB9AF7), size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _langService.trEnDe(
+                          'Özel Dil Paketi (.cstudio-lang / .json)',
+                          'Custom Language Pack (.cstudio-lang / .json)',
+                          'Benutzerdefiniertes Sprachpaket (.cstudio-lang / .json)',
+                        ),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFC0CAF5),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _langService.trEnDe(
+                          'Kendi dil dosyanızı içe aktarın veya çeviri aracını açın',
+                          'Import your own language file or open the translation tool',
+                          'Importieren Sie Ihre Sprachdatei oder öffnen Sie das Übersetzungstool',
+                        ),
+                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF565F89)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: _openLanguageCreatorTool,
+                  icon: const Icon(Icons.open_in_browser_rounded, size: 14),
+                  label: Text(_langService.trEnDe('Çeviri Aracı', 'Creator Tool', 'Editor-Tool')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF7AA2F7),
+                    side: const BorderSide(color: Color(0xFF7AA2F7)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    textStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                ElevatedButton.icon(
+                  onPressed: _handleImportCustomLanguage,
+                  icon: const Icon(Icons.file_open_rounded, size: 14),
+                  label: Text(_langService.trEnDe('İçe Aktar...', 'Import File...', 'Importieren...')),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFBB9AF7),
+                    foregroundColor: const Color(0xFF1A1B26),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
 
           _buildSectionHeader(
-            title: isTr ? 'Otomatik Kaydetme' : 'Auto-Save',
-            subtitle: isTr
-                ? 'Yazarken kod dosyalarını otomatik olarak arka planda kaydeder'
-                : 'Automatically saves code files in background as you type',
+            title: _langService.trEnDe('Otomatik Kaydetme', 'Auto-Save', 'Automatisches Speichern'),
+            subtitle: _langService.trEnDe(
+              'Yazarken kod dosyalarını otomatik olarak arka planda kaydeder',
+              'Automatically saves code files in background as you type',
+              'Speichert Codedateien während der Eingabe automatisch im Hintergrund',
+            ),
             icon: Icons.save_rounded,
           ),
           const SizedBox(height: 8),
@@ -228,7 +501,11 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isTr ? 'Her tuş vuruşundan sonra otomatik kaydet' : 'Auto-save after each modification',
+                    _langService.trEnDe(
+                      'Her tuş vuruşundan sonra otomatik kaydet',
+                      'Auto-save after each modification',
+                      'Nach jeder Änderung automatisch speichern',
+                    ),
                     style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFC0CAF5)),
                   ),
                 ),
@@ -243,10 +520,12 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
           const SizedBox(height: 20),
 
           _buildSectionHeader(
-            title: isTr ? 'Hakkında' : 'About',
-            subtitle: isTr
-                ? 'C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nÖğrenciler ve yazılımcılar için akıllı C dili geliştirme ortamı.'
-                : 'C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nSmart C language development environment for students and developers.',
+            title: _langService.trEnDe('Hakkında', 'About', 'Über'),
+            subtitle: _langService.trEnDe(
+              'C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nÖğrenciler ve yazılımcılar için akıllı C dili geliştirme ortamı.',
+              'C-Studio Modern C IDE v1.2 (Portable Windows Edition)\nSmart C language development environment for students and developers.',
+              'C-Studio Moderne C-IDE v1.2 (Portable Windows Edition)\nSmarte C-Entwicklungsumgebung für Studenten und Entwickler.',
+            ),
             icon: Icons.info_outline_rounded,
           ),
         ],
@@ -255,7 +534,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   // TAB 2: YAPAY ZEKA AYARLARI
-  Widget _buildAiTab(bool isTr) {
+  Widget _buildAiTab() {
     final isLocalSupported = _aiService.isLocalAiAvailable;
     final localModels = _aiService.localAiService.findAvailableModels();
 
@@ -263,28 +542,43 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Yapay Zeka Dili (Uygulama dilinden bağımsız!)
           _buildSectionHeader(
-            title: isTr ? 'Yapay Zeka Asistanı Dili' : 'AI Assistant Language',
-            subtitle: isTr
-                ? 'Yapay zekanın kod hatalarını açıklayacağı ve sohbet edeceği dil (Arayüz dilinden bağımsızdır)'
-                : 'The language used by the AI tutor to explain errors and chat (Independent of UI language)',
+            title: _langService.trEnDe('Yapay Zeka Asistanı Dili', 'AI Assistant Language', 'KI-Assistentensprache'),
+            subtitle: _langService.trEnDe(
+              'Yapay zekanın kod hatalarını açıklayacağı ve sohbet edeceği dil (Arayüz dilinden bağımsızdır)',
+              'The language used by the AI tutor to explain errors and chat (Independent of UI language)',
+              'Die Sprache, in der die KI Fehler erklärt und antwortet (Unabhängig von der UI-Sprache)',
+            ),
             icon: Icons.translate_rounded,
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               _buildLanguageOptionCard(
-                label: AppLanguageService.turkishLabel, // 🇹🇷 Türkçe (Bayrak VAR)
+                label: AppLanguageService.turkishLabel,
                 isSelected: _selectedAiLanguage == 'tr',
                 onTap: () => setState(() => _selectedAiLanguage = 'tr'),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               _buildLanguageOptionCard(
-                label: AppLanguageService.englishLabel, // English (Kesinlikle bayrak YOK)
+                label: AppLanguageService.englishLabel,
                 isSelected: _selectedAiLanguage == 'en',
                 onTap: () => setState(() => _selectedAiLanguage = 'en'),
               ),
+              const SizedBox(width: 8),
+              _buildLanguageOptionCard(
+                label: AppLanguageService.germanLabel,
+                isSelected: _selectedAiLanguage == 'de',
+                onTap: () => setState(() => _selectedAiLanguage = 'de'),
+              ),
+              if (_langService.hasCustomLanguage || _selectedAiLanguage == 'custom') ...[
+                const SizedBox(width: 8),
+                _buildLanguageOptionCard(
+                  label: '🌐 ${_langService.customLanguageName ?? "Custom"}',
+                  isSelected: _selectedAiLanguage == 'custom',
+                  onTap: () => setState(() => _selectedAiLanguage = 'custom'),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 14),
@@ -303,9 +597,11 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    isTr
-                        ? 'Asistan koddaki hataları (Nerede, Neden, Nasıl) açıklar, C sorularını yanıtlar ve koda istediğiniz eklemeleri yapar. Kodlama dışı konulara cevap vermez.'
-                        : 'The assistant explains errors (Where, Why, How), answers C questions, and adds requested features. Non-coding topics are declined.',
+                    _langService.trEnDe(
+                      'Asistan koddaki hataları (Nerede, Neden, Nasıl) açıklar, C sorularını yanıtlar ve koda istediğiniz eklemeleri yapar. Kodlama dışı konulara cevap vermez.',
+                      'The assistant explains errors (Where, Why, How), answers C questions, and adds requested features. Non-coding topics are declined.',
+                      'Der Assistent erklärt Fehler (Wo, Warum, Wie), beantwortet C-Fragen und fügt Code hinzu. Themenfremde Fragen werden abgelehnt.',
+                    ),
                     style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7AA2F7)),
                   ),
                 ),
@@ -314,27 +610,27 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
           ),
           const SizedBox(height: 16),
 
-          // 2. Dahili Yapay Zeka Motoru Bilgisi
           _buildSectionHeader(
-            title: isTr ? 'Yapay Zeka Motoru' : 'AI Engine',
-            subtitle: isTr ? 'Dahili çevrimdışı yerel model bilgileri' : 'Built-in offline local model information',
+            title: _langService.trEnDe('Yapay Zeka Motoru', 'AI Engine', 'KI-Engine'),
+            subtitle: _langService.trEnDe('Dahili çevrimdışı yerel model bilgileri', 'Built-in offline local model information', 'Informationen zum integrierten Offline-Modell'),
             icon: Icons.psychology_rounded,
           ),
           const SizedBox(height: 8),
 
-          // Dahili Yerel Model Kartı
           _buildEngineCard(
-            title: isTr ? 'Dahili Çevrimdışı (Qwen 2.5 Coder 1.5B)' : 'Built-in Offline (Qwen 2.5 Coder 1.5B)',
-            badge: isTr ? 'TAMAMEN ÇEVRİMDIŞI' : 'FULLY OFFLINE',
+            title: _langService.trEnDe('Dahili Çevrimdışı (Qwen 2.5 Coder 1.5B)', 'Built-in Offline (Qwen 2.5 Coder 1.5B)', 'Integriert Offline (Qwen 2.5 Coder 1.5B)'),
+            badge: _langService.trEnDe('TAMAMEN ÇEVRİMDIŞI', 'FULLY OFFLINE', 'VOLLSTÄNDIG OFFLINE'),
             badgeColor: const Color(0xFF9ECE6A),
             icon: Icons.offline_bolt_rounded,
             isSelected: true,
             onTap: () {},
             children: [
               Text(
-                isTr
-                    ? 'İnternet, harici API anahtarı veya hesap gerekmez. Tüm işlemler doğrudan bilgisayarınızda yerel olarak çalıştırılır.'
-                    : 'No internet, external API key, or account required. All inferences run 100% locally on your machine.',
+                _langService.trEnDe(
+                  'İnternet, harici API anahtarı veya hesap gerekmez. Tüm işlemler doğrudan bilgisayarınızda yerel olarak çalıştırılır.',
+                  'No internet, external API key, or account required. All inferences run 100% locally on your machine.',
+                  'Kein Internet, externer API-Schlüssel oder Konto erforderlich. Alle Berechnungen laufen lokal auf Ihrem Computer.',
+                ),
                 style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFA9B1D6), height: 1.3),
               ),
               const SizedBox(height: 6),
@@ -347,13 +643,26 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 child: Text(
                   isLocalSupported
                       ? '✓ Model: ${localModels.isNotEmpty ? localModels.first.path.split(RegExp(r"[\\/]")).last : "qwen2.5-coder-1.5b-instruct-q3_k_m.gguf"}'
-                      : (isTr ? '✗ Model dosyası ai/models/ klasöründe bulunamadı.' : '✗ Model file not found in ai/models/ directory.'),
+                      : _langService.trEnDe(
+                          '✗ Model dosyası ai/models/ klasöründe bulunamadı.',
+                          '✗ Model file not found in ai/models/ directory.',
+                          '✗ Modelldatei im Ordner ai/models/ nicht gefunden.',
+                        ),
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 10,
                     color: isLocalSupported ? const Color(0xFF9ECE6A) : const Color(0xFFF7768E),
                   ),
                 ),
               ),
+              if (!isLocalSupported) ...[
+                const SizedBox(height: 10),
+                AiModelDownloadCard(
+                  compact: true,
+                  onDownloadCompleted: () {
+                    setState(() {});
+                  },
+                ),
+              ],
             ],
           ),
         ],
@@ -362,7 +671,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   // TAB 3: DERLEYİCİ AYARLARI
-  Widget _buildCompilerTab(bool isTr) {
+  Widget _buildCompilerTab() {
     final active = _compilerService.activeCompiler;
 
     return SingleChildScrollView(
@@ -370,10 +679,12 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader(
-            title: isTr ? 'Algılanan C Derleyicisi' : 'Detected C Compiler',
-            subtitle: isTr
-                ? 'C programlarını derleyen ve çalıştıran motor'
-                : 'The toolchain that compiles and executes C source files',
+            title: _langService.trEnDe('Algılanan C Derleyicisi', 'Detected C Compiler', 'Erkannter C-Compiler'),
+            subtitle: _langService.trEnDe(
+              'C programlarını derleyen ve çalıştıran motor',
+              'The toolchain that compiles and executes C source files',
+              'Die Toolchain, die C-Quelldateien kompiliert und ausführt',
+            ),
             icon: Icons.memory_rounded,
           ),
           const SizedBox(height: 8),
@@ -403,7 +714,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        isTr ? 'Dahili & Portatif' : 'Built-in & Portable',
+                        _langService.trEnDe('Dahili & Portatif', 'Built-in & Portable', 'Integriert & Portabel'),
                         style: const TextStyle(fontSize: 9.5, color: Color(0xFF9ECE6A), fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -416,9 +727,11 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  isTr
-                      ? '✓ cstudio_runtime.h tamponlama yaması aktif: printf/scanf doğrudan terminale anında akar.'
-                      : '✓ cstudio_runtime.h buffering patch active: printf/scanf flush immediately.',
+                  _langService.trEnDe(
+                    '✓ cstudio_runtime.h tamponlama yaması aktif: printf/scanf doğrudan terminale anında akar.',
+                    '✓ cstudio_runtime.h buffering patch active: printf/scanf flush immediately.',
+                    '✓ cstudio_runtime.h Puffer-Patch aktiv: printf/scanf werden sofort im Terminal ausgegeben.',
+                  ),
                   style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF73DACA)),
                 ),
               ],
@@ -455,7 +768,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF1F2335) : const Color(0xFF13141C),
             borderRadius: BorderRadius.circular(8),
@@ -470,14 +783,14 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
               Text(
                 label,
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                   color: isSelected ? Colors.white : const Color(0xFFC0CAF5),
                 ),
               ),
               Icon(
                 isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-                size: 16,
+                size: 15,
                 color: isSelected ? const Color(0xFF7AA2F7) : const Color(0xFF565F89),
               ),
             ],
