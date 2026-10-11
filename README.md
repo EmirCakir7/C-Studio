@@ -77,6 +77,7 @@ Get the pre-built portable binaries directly from [**GitHub Releases**](https://
 - Seamlessly toggle the entire UI, toolbar, terminal notices, compiler advisor, and AI tutor between **English**, **🇹🇷 Türkçe**, and **🇩🇪 Deutsch**.
 - **Custom Language Pack Support (.cstudio-lang / .json):** Users can import their own custom language files. When imported, C-Studio prompts for the language name in English and applies the translation dynamically across all UI components.
 - **Standalone Language Creator Tool (`C-Studio_Language_Creator.exe`):** Includes a dedicated desktop tool pre-loaded with all C-Studio English strings, 1-click clipboard copy, Google Translate links, bulk copy/import, and 1-click direct application to C-Studio.
+  > ⚠️ **Note (In Active Development / Beta):** The custom translation tool and pack importer are currently in active beta development. User translations may not cover 100% of all UI strings or may contain minor formatting errors and fallback text. Localization support will continue to be improved in upcoming updates.
 
 ### 📁 Multi-Project & File Management
 - Manage multiple projects simultaneously with tabbed switching.
@@ -184,6 +185,7 @@ Planned features and expansions currently in active development for upcoming rel
 - **100% Çevrimdışı Yapay Zeka Asistanı (Qwen 2.5 Coder 1.5B):** İnternet, API anahtarı veya üyelik gerektirmeden koddaki hataları analiz eder, açıklar ve çözüm önerir.
 - **Akıllı Hata & Çözüm Danışmanı:** Derleyici hatalarını (Nerede, Neden, Nasıl Düzeltilir) adım adım açıklar ve tek tıkla otomatik düzeltme sunar.
 - **Çok Dilli Arayüz & Özel Dil Desteği:** Türkçe, İngilizce ve Almanca desteğinin yanında, kullanıcıların istedikleri dile çevirebilmeleri için `C-Studio_Language_Creator.exe` çeviri aracı dahildir.
+  > ⚠️ **Önemli Not (Geliştirme Aşamasında / Beta):** Bağımsız Çeviri Uygulaması ve özel dil sistemi henüz aktif geliştirme aşamasındadır. Bu araçla yapılan çevirilerde eksiklikler, tam oturmayan veya çevrilmeyen kısımlar ile küçük görsel hatalar olabilir; dil motoru sonraki güncellemelerde daha da olgunlaştırılacaktır.
 - **Windows Explorer Klasör Seçimi:** Yeni proje oluştururken kayıt dizini doğrudan Windows dosya gezgininden seçilebilir.
 - **Uygulama İçi 1-Tık Model İndirme:** Model bulunamadığında doğrudan uygulama içinden tek tıkla canlı hız ve yüzde göstergesiyle modeli indirebilme.
 

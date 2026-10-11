@@ -59,3 +59,8 @@ app.*.map.json
 *.bin
 ai/models/*.gguf
 !ai/models/.gitkeep
+
+# Release distribution builds
+dist/
+tools/publish_release.dart
+tools/update_release_body.dart
