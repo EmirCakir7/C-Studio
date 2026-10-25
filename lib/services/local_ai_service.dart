@@ -1,22 +1,67 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import '../models/compiler_error.dart';
 
-class LocalAiService {
+enum LocalAiState {
+  stopped,
+  starting,
+  running,
+  error,
+}
+
+class LocalAiService extends ChangeNotifier {
   static final LocalAiService _instance = LocalAiService._internal();
   factory LocalAiService() => _instance;
   LocalAiService._internal();
 
   Process? _serverProcess;
   int _port = 8089;
-  bool _isStarting = false;
+  LocalAiState _state = LocalAiState.stopped;
+  String _statusMessage = 'Yapay zeka kapalı';
+  String? _lastError;
   String? _activeModelPath;
   String? _serverExePath;
+  DateTime? _startingStartTime;
 
-  bool get isRunning => _serverProcess != null;
+  LocalAiState get state => _state;
+  bool get isRunning => _state == LocalAiState.running && _serverProcess != null;
+  bool get isStarting => _state == LocalAiState.starting;
+  bool get isStopped => _state == LocalAiState.stopped;
+  bool get hasError => _state == LocalAiState.error;
+  String get statusMessage => _statusMessage;
+  String? get lastError => _lastError;
+  int get port => _port;
+
+  int get startupElapsedSeconds => _startingStartTime != null
+      ? DateTime.now().difference(_startingStartTime!).inSeconds
+      : 0;
+
   String? get activeModelName => _activeModelPath != null ? p.basename(_activeModelPath!) : null;
+
+  String get activeModelDisplayName {
+    if (_activeModelPath != null) {
+      return getModelDisplayName(_activeModelPath!);
+    }
+    final models = findAvailableModels();
+    if (models.isNotEmpty) {
+      return getModelDisplayName(models.first.path);
+    }
+    return 'Qwen 2.5 Coder';
+  }
+
+  /// Model dosya adından kullanıcı dostu etiket üretir
+  static String getModelDisplayName(String? fileNameOrPath) {
+    if (fileNameOrPath == null) return 'Qwen 2.5 Coder';
+    final name = p.basename(fileNameOrPath).toLowerCase();
+    if (name.contains('7b')) return 'Qwen 2.5 Coder 7B';
+    if (name.contains('3b')) return 'Qwen 2.5 Coder 3B';
+    if (name.contains('1.5b')) return 'Qwen 2.5 Coder 1.5B';
+    if (name.contains('deepseek')) return 'DeepSeek Coder';
+    return p.basenameWithoutExtension(fileNameOrPath);
+  }
 
   /// llama-server.exe yolunu bulur
   String? findServerExe() {
@@ -31,8 +76,10 @@ class LocalAiService {
       p.join(exeDir, 'ai', 'llama-server.exe'),
       p.join(Directory.current.path, 'ai', 'runtime', 'llama-server.exe'),
       p.join(Directory.current.path, 'ai', 'llama-server.exe'),
-      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio', 'ai', 'runtime', 'llama-server.exe'),
+      p.join(userProfile, 'Desktop', 'C-Studio-7B', 'ai', 'runtime', 'llama-server.exe'),
       p.join(userProfile, 'Desktop', 'C-Studio', 'ai', 'runtime', 'llama-server.exe'),
+      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio-7B', 'ai', 'runtime', 'llama-server.exe'),
+      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio', 'ai', 'runtime', 'llama-server.exe'),
     ];
 
     for (final cand in candidates) {
@@ -44,7 +91,7 @@ class LocalAiService {
     return null;
   }
 
-  /// Mevcut .gguf modellerini listeler
+  /// Mevcut .gguf modellerini listeler (7B > 3B > 1.5B öncelikli)
   List<File> findAvailableModels() {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
     final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
@@ -53,8 +100,10 @@ class LocalAiService {
       p.join(exeDir, 'ai'),
       p.join(Directory.current.path, 'ai', 'models'),
       p.join(Directory.current.path, 'ai'),
-      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio', 'ai', 'models'),
+      p.join(userProfile, 'Desktop', 'C-Studio-7B', 'ai', 'models'),
       p.join(userProfile, 'Desktop', 'C-Studio', 'ai', 'models'),
+      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio-7B', 'ai', 'models'),
+      p.join(userProfile, 'OneDrive', 'Masaüstü', 'C-Studio', 'ai', 'models'),
     ];
 
     final found = <String, File>{};
@@ -64,13 +113,27 @@ class LocalAiService {
         try {
           for (final entity in dir.listSync()) {
             if (entity is File && entity.path.toLowerCase().endsWith('.gguf')) {
-              found[p.basename(entity.path)] = entity;
+              // Yarıda kalmış .part dosyalarını atla
+              if (!entity.path.endsWith('.part')) {
+                found[p.basename(entity.path)] = entity;
+              }
             }
           }
         } catch (_) {}
       }
     }
-    return found.values.toList();
+
+    final list = found.values.toList();
+    // Sıralama: 7B > 3B > 1.5B > diğerleri
+    list.sort((a, b) {
+      final na = p.basename(a.path).toLowerCase();
+      final nb = p.basename(b.path).toLowerCase();
+      int scoreA = na.contains('7b') ? 3 : (na.contains('3b') ? 2 : (na.contains('1.5b') ? 1 : 0));
+      int scoreB = nb.contains('7b') ? 3 : (nb.contains('3b') ? 2 : (nb.contains('1.5b') ? 1 : 0));
+      return scoreB.compareTo(scoreA);
+    });
+
+    return list;
   }
 
   bool isLocalAiSupported() {
@@ -82,14 +145,30 @@ class LocalAiService {
   /// Yerel AI sunucusunu arka planda başlatır
   Future<bool> startServer({String? specificModelPath}) async {
     if (isRunning) return true;
-    if (_isStarting) {
-      while (_isStarting) {
+    if (_state == LocalAiState.starting) {
+      while (_state == LocalAiState.starting) {
         await Future.delayed(const Duration(milliseconds: 200));
       }
       return isRunning;
     }
 
-    _isStarting = true;
+    _state = LocalAiState.starting;
+    _statusMessage = 'Yapay zeka sunucusu hazırlanıyor...';
+    _lastError = null;
+    _startingStartTime = DateTime.now();
+    notifyListeners();
+
+    Timer? elapsedTimer;
+    elapsedTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_state == LocalAiState.starting) {
+        final sec = DateTime.now().difference(_startingStartTime!).inSeconds;
+        _statusMessage = 'Model belleğe alınıyor... ($sec sn)';
+        notifyListeners();
+      } else {
+        timer.cancel();
+      }
+    });
+
     try {
       final serverExe = findServerExe();
       if (serverExe == null) {
@@ -102,15 +181,13 @@ class LocalAiService {
         if (models.isEmpty) {
           throw Exception('GGUF model dosyası bulunamadı!');
         }
-        // Qwen modelini öncelikle tercih et
-        final qwenModel = models.firstWhere(
-          (m) => p.basename(m.path).toLowerCase().contains('qwen'),
-          orElse: () => models.first,
-        );
-        modelPath = qwenModel.path;
+        modelPath = models.first.path;
       }
 
       _activeModelPath = modelPath;
+      final modelDisp = getModelDisplayName(modelPath);
+      _statusMessage = '$modelDisp belleğe yükleniyor...';
+      notifyListeners();
 
       // Port çakışmasını önlemek için 8089'dan başlayarak müsait ilk portu bul
       _port = await _findAvailablePort(8089);
@@ -132,36 +209,61 @@ class LocalAiService {
       );
 
       _serverProcess!.stdout.transform(utf8.decoder).listen((data) {
-        // İsteğe bağlı: log
+        // Log istenirse burada dinlenebilir
       });
 
       _serverProcess!.stderr.transform(utf8.decoder).listen((data) {
-        // İsteğe bağlı: log
+        // Log istenirse burada dinlenebilir
       });
 
       _serverProcess!.exitCode.then((code) {
-        _serverProcess = null;
+        if (_serverProcess != null) {
+          _serverProcess = null;
+          _state = LocalAiState.stopped;
+          _statusMessage = 'Sunucu durduruldu';
+          notifyListeners();
+        }
       });
 
-      // Sunucunun hazır olmasını bekle (healthcheck)
-      final ready = await _waitForReady(Duration(seconds: 15));
+      // 7B model yüklenmesi disk ve donanıma göre 30-50 saniye sürebilir
+      final ready = await _waitForReady(const Duration(seconds: 50));
+      elapsedTimer.cancel();
+
       if (!ready) {
         stopServer();
-        throw Exception('Yerel yapay zeka sunucusu zamanında başlatılamadı.');
+        throw Exception('Yerel yapay zeka sunucusu zamanında yanıt vermedi.');
       }
 
+      _state = LocalAiState.running;
+      _statusMessage = '$modelDisp hazır';
+      notifyListeners();
       return true;
-    } finally {
-      _isStarting = false;
+    } catch (e) {
+      elapsedTimer.cancel();
+      if (_serverProcess != null) {
+        try {
+          _serverProcess!.kill();
+        } catch (_) {}
+        _serverProcess = null;
+      }
+      _state = LocalAiState.error;
+      _lastError = e.toString();
+      _statusMessage = 'Başlatma hatası: $e';
+      notifyListeners();
+      return false;
     }
   }
 
   Future<bool> _waitForReady(Duration timeout) async {
     final end = DateTime.now().add(timeout);
     final client = HttpClient();
-    client.connectionTimeout = const Duration(milliseconds: 500);
+    client.connectionTimeout = const Duration(milliseconds: 600);
 
     while (DateTime.now().isBefore(end)) {
+      if (_serverProcess == null) {
+        client.close();
+        return false;
+      }
       try {
         final req = await client.getUrl(Uri.parse('http://127.0.0.1:$_port/health'));
         final res = await req.close();
@@ -170,7 +272,7 @@ class LocalAiService {
           return true;
         }
       } catch (_) {}
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 350));
     }
     client.close();
     return false;
@@ -196,6 +298,9 @@ class LocalAiService {
       } catch (_) {}
       _serverProcess = null;
     }
+    _state = LocalAiState.stopped;
+    _statusMessage = 'Yapay zeka durduruldu (RAM serbest bırakıldı)';
+    notifyListeners();
   }
 
   String _cleanAiResponse(String rawText, String userPrompt) {
@@ -241,7 +346,7 @@ class LocalAiService {
     if (!isRunning) {
       final started = await startServer();
       if (!started) {
-        throw Exception('Yerel yapay zeka sunucusu başlatılamadı.');
+        throw Exception(_lastError ?? 'Yerel yapay zeka sunucusu başlatılamadı.');
       }
     }
 

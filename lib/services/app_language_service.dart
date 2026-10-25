@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
+import 'app_path_service.dart';
 
 class AppLanguageService extends ChangeNotifier {
   static final AppLanguageService _instance = AppLanguageService._internal();
@@ -55,23 +55,9 @@ class AppLanguageService extends ChangeNotifier {
     return tr;
   }
 
-  File _getConfigFile() {
-    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-    final configDir = Directory(p.join(userProfile, '.cstudio'));
-    if (!configDir.existsSync()) {
-      configDir.createSync(recursive: true);
-    }
-    return File(p.join(configDir.path, 'app_settings.json'));
-  }
+  File _getConfigFile() => AppPathService.configFile;
 
-  File _getCustomLanguageFile() {
-    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-    final configDir = Directory(p.join(userProfile, '.cstudio'));
-    if (!configDir.existsSync()) {
-      configDir.createSync(recursive: true);
-    }
-    return File(p.join(configDir.path, 'custom_language.json'));
-  }
+  File _getCustomLanguageFile() => AppPathService.customLanguageFile;
 
   void loadSettings() {
     try {

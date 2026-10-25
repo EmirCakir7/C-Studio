@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../models/project_model.dart';
 import '../services/app_language_service.dart';
 import '../services/file_dialog_service.dart';
+import '../services/app_path_service.dart';
 
 class NewProjectDialog extends StatefulWidget {
   const NewProjectDialog({super.key});
@@ -27,8 +28,7 @@ class _NewProjectDialogState extends State<NewProjectDialog> {
         : (lang == 'de' ? 'Mein_C_Projekt' : 'My_C_Project');
     _nameController = TextEditingController(text: defaultName);
 
-    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-    final defaultDir = p.join(userProfile, 'Documents', 'CStudio_Projeleri');
+    final defaultDir = AppPathService.projectsDirectory;
     _pathController = TextEditingController(text: defaultDir);
     _selectedTemplate = ProjectModel.templates.first;
   }

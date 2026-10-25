@@ -14,6 +14,7 @@ import 'services/compiler_service.dart';
 import 'services/smart_error_advisor.dart';
 import 'services/local_ai_service.dart';
 import 'services/app_language_service.dart';
+import 'services/ai_assistant_service.dart';
 import 'widgets/code_editor.dart';
 import 'widgets/error_solution_panel.dart';
 import 'widgets/new_project_dialog.dart';
@@ -23,9 +24,11 @@ import 'widgets/ai_panel.dart';
 import 'widgets/settings_dialog.dart';
 import 'widgets/special_keys_bar.dart';
 import 'services/file_dialog_service.dart';
+import 'services/app_path_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppPathService.init();
   runApp(const CStudioApp());
 }
 
@@ -183,8 +186,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
   }
 
   void _initDefaultProject() {
-    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-    final projectsDir = p.join(userProfile, 'Documents', 'CStudio_Projeleri');
+    final projectsDir = AppPathService.projectsDirectory;
     final pDir = Directory(projectsDir);
     if (!pDir.existsSync()) {
       pDir.createSync(recursive: true);
@@ -296,14 +298,16 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         exeFile.deleteSync();
       }
     } catch (_) {
-      try {
-        Process.runSync('taskkill', ['/F', '/IM', p.basename(outExe)]);
-        await Future.delayed(const Duration(milliseconds: 150));
-        final exeFile = File(outExe);
-        if (exeFile.existsSync()) {
-          exeFile.deleteSync();
-        }
-      } catch (_) {}
+      if (Platform.isWindows) {
+        try {
+          Process.runSync('taskkill', ['/F', '/IM', p.basename(outExe)]);
+          await Future.delayed(const Duration(milliseconds: 150));
+          final exeFile = File(outExe);
+          if (exeFile.existsSync()) {
+            exeFile.deleteSync();
+          }
+        } catch (_) {}
+      }
     }
 
     // Bekleyen tüm değişiklikleri diske kaydet
@@ -401,6 +405,22 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
 
   Future<void> _executeProgramDirectly() async {
     if (_currentProject == null) return;
+
+    // Android / Bulut Derleyici Çalıştırması
+    if (!Platform.isWindows || _compilerService.activeCompiler?.exePath == 'wandbox') {
+      final progOut = _compilerService.lastProgramOutput;
+      setState(() {
+        _rightTabIndex = 0;
+        _isRightPanelOpen = true;
+        _terminalOutput = '🚀 ${_langService.trEnDe("Program Çalıştırıldı (GNU GCC)", "Program Executed (GNU GCC)", "Programm ausgeführt (GNU GCC)")} [${DateFormat('HH:mm:ss').format(DateTime.now())}]\n'
+            '--------------------------------------------------\n'
+            '${progOut.trim().isEmpty ? "[Çıktı üretilmedi / No output]" : progOut}\n'
+            '--------------------------------------------------\n'
+            '✔ ${_langService.trEnDe("Program tamamlandı", "Program completed", "Programm beendet")} (0)\n';
+      });
+      return;
+    }
+
     final outExe = _currentProject!.fullOutputPath;
 
     if (!File(outExe).existsSync()) {
@@ -478,7 +498,35 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       setState(() {
         _terminalOutput += '$input\n';
       });
+    } else if (!Platform.isWindows || _compilerService.activeCompiler?.exePath == 'wandbox') {
+      setState(() {
+        _terminalOutput += '> $input\n';
+      });
+      _runWithStdin(input);
     }
+  }
+
+  Future<void> _runWithStdin(String stdinText) async {
+    if (_currentProject == null) return;
+    final activePath = p.join(_currentProject!.rootDirectory, _activeFileName);
+    setState(() {
+      _isCompiling = true;
+      _statusMessage = _langService.trEnDe('⏳ Çalıştırılıyor...', '⏳ Running...', '⏳ Ausführen...');
+    });
+    final res = await _compilerService.compile(
+      sourceFiles: [activePath],
+      outputExePath: '',
+      stdin: stdinText,
+    );
+    setState(() {
+      _isCompiling = false;
+      _statusMessage = _langService.trEnDe('Hazır', 'Ready', 'Bereit');
+      if (res.programOutput.isNotEmpty) {
+        _terminalOutput += res.programOutput;
+      } else {
+        _terminalOutput += '\n${res.output}\n';
+      }
+    });
   }
 
   void _stopProgram() {
@@ -1271,8 +1319,10 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     if (selected == 'rename') {
       _renameFile();
     } else if (selected == 'open_in_explorer' && _currentProject != null) {
-      final fullPath = p.join(_currentProject!.rootDirectory, _activeFileName);
-      Process.start('explorer.exe', ['/select,', fullPath]);
+      if (Platform.isWindows) {
+        final fullPath = p.join(_currentProject!.rootDirectory, _activeFileName);
+        Process.start('explorer.exe', ['/select,', fullPath]);
+      }
     } else if (selected == 'delete') {
       _deleteFile(_activeFileName);
     }
@@ -1285,6 +1335,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         .where((e) => e.fileName == _activeFileName)
         .map((e) => e.line)
         .toSet();
+    final isMobile = MediaQuery.of(context).size.width < 720;
 
     return CallbackShortcuts(
       bindings: {
@@ -1298,83 +1349,142 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
       child: Focus(
         autofocus: true,
         child: Scaffold(
+          drawer: isMobile
+              ? Drawer(
+                  backgroundColor: const Color(0xFF13141C),
+                  child: SafeArea(
+                    child: ProjectExplorer(
+                      project: _currentProject,
+                      projects: _projects,
+                      activeFile: _activeFileName,
+                      onFileSelected: (f) {
+                        _openFile(f);
+                        Navigator.of(context).pop();
+                      },
+                      onAddCFile: () => _addFileToProject('.c'),
+                      onAddHFile: () => _addFileToProject('.h'),
+                      onOpenFolder: () {
+                        if (_currentProject != null && Platform.isWindows) {
+                          Process.start('explorer.exe', [_currentProject!.rootDirectory]);
+                        }
+                      },
+                      onProjectSelected: (p) {
+                        _switchProject(p);
+                        Navigator.of(context).pop();
+                      },
+                      onNewProject: _handleNewProject,
+                      onOpenExistingProject: _handleOpenProjectFolder,
+                      onRenameProject: _renameProject,
+                      onCloseProject: _closeProject,
+                      onRenameFile: (f) => _renameFile(targetFileName: f),
+                      onDeleteFile: _deleteFile,
+                    ),
+                  ),
+                )
+              : null,
           body: Column(
             children: [
               // 1. Üst Modern Araç Çubuğu (Toolbar)
-              _buildTopBar(),
+              _buildTopBar(isMobile: isMobile),
 
-              // 2. Ana Çalışma Alanı (Sol: Gezgin, Orta: Editör, Sağ: Çıktı / Hatalar / AI)
+              // 2. Ana Çalışma Alanı
               Expanded(
-                child: Row(
-                  children: [
-                    // Sol: Proje Gezgini
-                    if (_showProjectExplorer) ...[
-                      SizedBox(
-                        width: 220,
-                        child: ProjectExplorer(
-                          project: _currentProject,
-                          projects: _projects,
-                          activeFile: _activeFileName,
-                          onFileSelected: _openFile,
-                          onAddCFile: () => _addFileToProject('.c'),
-                          onAddHFile: () => _addFileToProject('.h'),
-                          onOpenFolder: () {
-                            if (_currentProject != null) {
-                              Process.start('explorer.exe', [_currentProject!.rootDirectory]);
-                            }
-                          },
-                          onProjectSelected: _switchProject,
-                          onNewProject: _handleNewProject,
-                          onOpenExistingProject: _handleOpenProjectFolder,
-                          onRenameProject: _renameProject,
-                          onCloseProject: _closeProject,
-                          onRenameFile: (f) => _renameFile(targetFileName: f),
-                          onDeleteFile: _deleteFile,
-                        ),
-                      ),
-                      const VerticalDivider(color: Color(0xFF24283B), width: 1),
-                    ],
-
-                    // Orta: Sekmeler ve Tam Boy Kod Editörü
-                    Expanded(
-                      child: Column(
+                child: isMobile
+                    ? Column(
                         children: [
-                          // Dosya Sekmeleri
-                          _buildTabBar(),
-
-                          // Klavyede zor bulunan tuşlar sekmesi / çubuğu (Açılıp Kapatılabilir)
-                          if (_showSpecialKeysBar)
-                            SpecialKeysBar(
-                              onInsert: _insertSpecialKey,
-                              onClose: () => setState(() => _showSpecialKeysBar = false),
-                            ),
-
-                          // Kod Editörü (Tam Boy!)
                           Expanded(
-                            child: CodeEditor(
-                              controller: activeController,
-                              focusNode: _editorFocusNode,
-                              errorLines: errorLines,
+                            child: Column(
+                              children: [
+                                _buildTabBar(isMobile: true),
+                                if (_showSpecialKeysBar)
+                                  SpecialKeysBar(
+                                    onInsert: _insertSpecialKey,
+                                    onClose: () => setState(() => _showSpecialKeysBar = false),
+                                  ),
+                                Expanded(
+                                  child: CodeEditor(
+                                    controller: activeController,
+                                    focusNode: _editorFocusNode,
+                                    errorLines: errorLines,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          if (_isRightPanelOpen) ...[
+                            const Divider(color: Color(0xFF24283B), height: 1),
+                            SizedBox(
+                              height: 260,
+                              child: _buildRightPanel(),
+                            ),
+                          ],
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          // Sol: Proje Gezgini
+                          if (_showProjectExplorer) ...[
+                            SizedBox(
+                              width: 220,
+                              child: ProjectExplorer(
+                                project: _currentProject,
+                                projects: _projects,
+                                activeFile: _activeFileName,
+                                onFileSelected: _openFile,
+                                onAddCFile: () => _addFileToProject('.c'),
+                                onAddHFile: () => _addFileToProject('.h'),
+                                onOpenFolder: () {
+                                  if (_currentProject != null && Platform.isWindows) {
+                                    Process.start('explorer.exe', [_currentProject!.rootDirectory]);
+                                  }
+                                },
+                                onProjectSelected: _switchProject,
+                                onNewProject: _handleNewProject,
+                                onOpenExistingProject: _handleOpenProjectFolder,
+                                onRenameProject: _renameProject,
+                                onCloseProject: _closeProject,
+                                onRenameFile: (f) => _renameFile(targetFileName: f),
+                                onDeleteFile: _deleteFile,
+                              ),
+                            ),
+                            const VerticalDivider(color: Color(0xFF24283B), width: 1),
+                          ],
+
+                          // Orta: Sekmeler ve Tam Boy Kod Editörü
+                          Expanded(
+                            child: Column(
+                              children: [
+                                _buildTabBar(),
+                                if (_showSpecialKeysBar)
+                                  SpecialKeysBar(
+                                    onInsert: _insertSpecialKey,
+                                    onClose: () => setState(() => _showSpecialKeysBar = false),
+                                  ),
+                                Expanded(
+                                  child: CodeEditor(
+                                    controller: activeController,
+                                    focusNode: _editorFocusNode,
+                                    errorLines: errorLines,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Sağ: Program Çıktısı, Hatalar ve Yapay Zeka
+                          if (_isRightPanelOpen) ...[
+                            const VerticalDivider(color: Color(0xFF24283B), width: 1),
+                            SizedBox(
+                              width: _rightPanelWidth,
+                              child: _buildRightPanel(),
+                            ),
+                          ],
                         ],
                       ),
-                    ),
-
-                    // Sağ: Program Çıktısı, Hatalar ve Yapay Zeka
-                    if (_isRightPanelOpen) ...[
-                      const VerticalDivider(color: Color(0xFF24283B), width: 1),
-                      SizedBox(
-                        width: _rightPanelWidth,
-                        child: _buildRightPanel(),
-                      ),
-                    ],
-                  ],
-                ),
               ),
 
               // 3. Durum Çubuğu (Status Bar)
-              _buildStatusBar(),
+              _buildStatusBar(isMobile: isMobile),
             ],
           ),
         ),
@@ -1382,7 +1492,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar({bool isMobile = false}) {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1390,9 +1500,22 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
         color: Color(0xFF16161E),
         border: Border(bottom: BorderSide(color: Color(0xFF24283B))),
       ),
-      child: Row(
-        children: [
-          // Logo & İsim
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            if (isMobile) ...[
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF7AA2F7), size: 22),
+                  tooltip: _langService.trEnDe('Proje Gezgini', 'Project Explorer', 'Projekt-Explorer'),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.only(right: 8),
+                ),
+              ),
+            ],
+            // Logo & İsim
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: Image.asset(
@@ -1560,7 +1683,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
                 const Icon(Icons.smart_toy_rounded, size: 14, color: Color(0xFFBB9AF7)),
                 const SizedBox(width: 6),
                 Text(
-                  'Qwen 2.5 Coder 1.5B',
+                  AiAssistantService().selectedModel,
                   style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFBB9AF7), fontWeight: FontWeight.bold),
                 ),
               ],
@@ -1615,6 +1738,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             },
           ),
         ],
+      ),
       ),
     );
   }
@@ -1672,7 +1796,7 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar({bool isMobile = false}) {
     return Container(
       height: 34,
       color: const Color(0xFF13141C),
@@ -1767,19 +1891,21 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
             ),
           ),
 
-          // Sol Proje Gezgini Aç/Kapat Butonu
-          IconButton(
-            icon: Icon(
-              _showProjectExplorer ? Icons.folder_open_rounded : Icons.folder_outlined,
-              size: 16,
-              color: const Color(0xFF7982A9),
+          if (!isMobile) ...[
+            // Sol Proje Gezgini Aç/Kapat Butonu
+            IconButton(
+              icon: Icon(
+                _showProjectExplorer ? Icons.folder_open_rounded : Icons.folder_outlined,
+                size: 16,
+                color: const Color(0xFF7982A9),
+              ),
+              tooltip: _langService.trEnDe('Proje Gezginini Göster/Gizle', 'Toggle Project Explorer', 'Projekt-Explorer umschalten'),
+              onPressed: () => setState(() => _showProjectExplorer = !_showProjectExplorer),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              constraints: const BoxConstraints(),
             ),
-            tooltip: _langService.trEnDe('Proje Gezginini Göster/Gizle', 'Toggle Project Explorer', 'Projekt-Explorer umschalten'),
-            onPressed: () => setState(() => _showProjectExplorer = !_showProjectExplorer),
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            constraints: const BoxConstraints(),
-          ),
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
+          ],
         ],
       ),
     );
@@ -1941,56 +2067,94 @@ class _MainIDEPageState extends State<MainIDEPage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildStatusBar() {
+  Widget _buildStatusBar({bool isMobile = false}) {
     return Container(
-      height: 24,
+      height: 28,
       color: const Color(0xFF0F1017),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(
         children: [
           // Durum Mesajı
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: _statusColor,
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(
               _statusMessage,
-              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+              style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
-          const SizedBox(width: 14),
-
-          // Otomatik Kayıt Durumu
-          Row(
-            children: [
-              Icon(
-                Icons.check_circle_rounded,
-                size: 12,
-                color: _autoSaveService.hasPendingChanges ? const Color(0xFFE0AF68) : const Color(0xFF9ECE6A),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _autoSaveService.hasPendingChanges
-                    ? _langService.trEnDe('Kaydediliyor...', 'Saving...', 'Wird gespeichert...')
-                    : '${_langService.trEnDe("Otomatik Kayıt: ", "Auto-Save: ", "Auto-Speichern: ")}${_lastSavedTime.isNotEmpty ? _lastSavedTime : _langService.trEnDe("Aktif", "Active", "Aktiv")}',
-                style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7982A9)),
-              ),
-            ],
-          ),
+          if (!isMobile) ...[
+            const SizedBox(width: 14),
+            // Otomatik Kayıt Durumu
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 12,
+                  color: _autoSaveService.hasPendingChanges ? const Color(0xFFE0AF68) : const Color(0xFF9ECE6A),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _autoSaveService.hasPendingChanges
+                      ? _langService.trEnDe('Kaydediliyor...', 'Saving...', 'Wird gespeichert...')
+                      : '${_langService.trEnDe("Otomatik Kayıt: ", "Auto-Save: ", "Auto-Speichern: ")}${_lastSavedTime.isNotEmpty ? _lastSavedTime : _langService.trEnDe("Aktif", "Active", "Aktiv")}',
+                  style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7982A9)),
+                ),
+              ],
+            ),
+          ],
 
           const Spacer(),
 
-          // UTF-8
-          Text('UTF-8', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF565F89))),
-          const SizedBox(width: 12),
+          if (isMobile) ...[
+            // Mobilde hızlı panel açma butonları
+            IconButton(
+              icon: const Icon(Icons.terminal_rounded, size: 16, color: Color(0xFF7AA2F7)),
+              tooltip: 'Terminal / Çıktı',
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              onPressed: () => setState(() {
+                final wasOpen = _isRightPanelOpen && _rightTabIndex == 0;
+                _rightTabIndex = 0;
+                _isRightPanelOpen = !wasOpen;
+              }),
+            ),
+            IconButton(
+              icon: const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFE0AF68)),
+              tooltip: 'Hatalar',
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              onPressed: () => setState(() {
+                final wasOpen = _isRightPanelOpen && _rightTabIndex == 1;
+                _rightTabIndex = 1;
+                _isRightPanelOpen = !wasOpen;
+              }),
+            ),
+            IconButton(
+              icon: const Icon(Icons.smart_toy_outlined, size: 16, color: Color(0xFFBB9AF7)),
+              tooltip: 'AI Asistan',
+              constraints: const BoxConstraints(),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              onPressed: () => setState(() {
+                final wasOpen = _isRightPanelOpen && _rightTabIndex == 2;
+                _rightTabIndex = 2;
+                _isRightPanelOpen = !wasOpen;
+              }),
+            ),
+          ] else ...[
+            // UTF-8
+            Text('UTF-8', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF565F89))),
+            const SizedBox(width: 12),
 
-          // Derleyici
-          Text(
-            _compilerService.activeCompiler?.name ?? 'TCC 64-bit',
-            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7AA2F7)),
-          ),
+            // Derleyici
+            Text(
+              _compilerService.activeCompiler?.name ?? 'TCC 64-bit',
+              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF7AA2F7)),
+            ),
+          ],
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/ai_assistant_service.dart';
 import '../services/app_language_service.dart';
+import '../services/local_ai_service.dart';
 import 'settings_dialog.dart';
 import 'ai_model_download_card.dart';
 
@@ -27,6 +28,7 @@ class AiPanel extends StatefulWidget {
 class AiPanelState extends State<AiPanel> {
   final TextEditingController _promptController = TextEditingController();
   final AiAssistantService _aiService = AiAssistantService();
+  final LocalAiService _localAiService = LocalAiService();
   final AppLanguageService _langService = AppLanguageService();
   final ScrollController _scrollController = ScrollController();
   List<AiMessage> get _messages => _aiService.messages;
@@ -52,6 +54,7 @@ class AiPanelState extends State<AiPanel> {
   void initState() {
     super.initState();
     _langService.addListener(_onLanguageChanged);
+    _localAiService.addListener(_onAiStateChanged);
     if (_aiService.messages.isEmpty) {
       _aiService.messages.add(
         AiMessage(
@@ -74,9 +77,16 @@ class AiPanelState extends State<AiPanel> {
     }
   }
 
+  void _onAiStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _langService.removeListener(_onLanguageChanged);
+    _localAiService.removeListener(_onAiStateChanged);
     _promptController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -190,7 +200,9 @@ class AiPanelState extends State<AiPanel> {
                   setState(() {});
                 },
               ),
-            ),
+            )
+          else
+            _buildAiControlBanner(),
 
           // 3. Mesajlar Listesi
           Expanded(
@@ -215,9 +227,235 @@ class AiPanelState extends State<AiPanel> {
     );
   }
 
+  Widget _buildAiControlBanner() {
+    final langService = _langService;
+    final modelName = _aiService.selectedModel;
+
+    // Eğer Google Gemini API seçiliyse
+    if (_aiService.isGemini) {
+      if (!_aiService.hasGeminiApiKey) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E202E),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF7AA2F7).withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded, size: 20, color: Color(0xFF7AA2F7)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      langService.trEnDe('Google Gemini API Anahtarı Gerekli', 'Gemini API Key Required', 'Gemini API-Schlüssel erforderlich'),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFC0CAF5)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      langService.trEnDe(
+                        'Bulut yapay zekasını kullanmak için ücretsiz API anahtarınızı girin.',
+                        'Enter your free API key from Google AI Studio to chat.',
+                        'Geben Sie Ihren kostenlosen API-Schlüssel ein.',
+                      ),
+                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF7982A9)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _openSettings,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7AA2F7),
+                  foregroundColor: const Color(0xFF13141C),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  langService.trEnDe('Anahtar Gir', 'Enter Key', 'Schlüssel eingeben'),
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
+    if (_localAiService.isStarting) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E202E),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF3B4261)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7AA2F7)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    langService.trEnDe(
+                      'Yapay Zeka Motoru Başlatılıyor...',
+                      'Starting AI Engine...',
+                      'KI-Engine wird gestartet...',
+                    ),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF7AA2F7)),
+                  ),
+                ),
+                Text(
+                  '${_localAiService.startupElapsedSeconds}s',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFC0CAF5)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: const LinearProgressIndicator(
+                minHeight: 4,
+                backgroundColor: Color(0xFF24283B),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7AA2F7)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _localAiService.statusMessage,
+              style: const TextStyle(fontSize: 11, color: Color(0xFFA9B1D6)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_localAiService.isStopped && _aiService.isReady) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF16161E),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF2A2E46)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F2335),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.bolt_rounded, size: 18, color: Color(0xFF9ECE6A)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    modelName,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFC0CAF5)),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    langService.trEnDe(
+                      'RAM tasarrufu için yapay zeka hazırda bekliyor.',
+                      'AI is in standby to save system RAM.',
+                      'KI ist im Standby-Modus, um RAM zu sparen.',
+                    ),
+                    style: const TextStyle(fontSize: 10.5, color: Color(0xFF7982A9)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                _localAiService.startServer();
+              },
+              icon: const Icon(Icons.play_arrow_rounded, size: 15),
+              label: Text(
+                langService.trEnDe('Yapay Zekayı Başlat', 'Start AI', 'KI starten'),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9ECE6A),
+                foregroundColor: const Color(0xFF13141C),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_localAiService.hasError) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2D1822),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFF7768E).withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded, size: 16, color: Color(0xFFF7768E)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _localAiService.statusMessage,
+                style: const TextStyle(fontSize: 11, color: Color(0xFFF7768E)),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => _localAiService.startServer(),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                langService.trEnDe('Tekrar Dene', 'Retry', 'Wiederholen'),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF7AA2F7)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
   Widget _buildHeaderBar() {
-    final isLocal = _aiService.isLocal;
     final isReady = _aiService.isReady;
+    final isGemini = _aiService.isGemini;
+    final isRunning = _localAiService.isRunning;
+    final isStarting = _localAiService.isStarting;
     final lang = _aiService.language;
     final langService = _langService;
 
@@ -225,15 +463,39 @@ class AiPanelState extends State<AiPanel> {
         ? AppLanguageService.turkishShortLabel
         : (lang == 'de' ? AppLanguageService.germanShortLabel : AppLanguageService.englishShortLabel);
 
-    final Color badgeBg = !isReady
-        ? const Color(0xFFFF9E64)
-        : (isLocal ? const Color(0xFF9ECE6A) : const Color(0xFF7AA2F7));
-    final IconData badgeIcon = !isReady
-        ? Icons.download_rounded
-        : (isLocal ? Icons.offline_bolt_rounded : Icons.cloud_done_rounded);
-    final String badgeText = !isReady
-        ? langService.trEnDe('Qwen 2.5 (Model İndir)', 'Qwen 2.5 (Download)', 'Qwen 2.5 (Herunterladen)')
-        : (isLocal ? 'Qwen 2.5 Coder 1.5B' : _aiService.selectedModel);
+    Color badgeBg;
+    IconData badgeIcon;
+    String badgeText;
+
+    if (isGemini) {
+      if (!isReady) {
+        badgeBg = const Color(0xFFFF9E64);
+        badgeIcon = Icons.key_rounded;
+        badgeText = 'Gemini (API Anahtarı Gir)';
+      } else {
+        badgeBg = const Color(0xFF7AA2F7);
+        badgeIcon = Icons.auto_awesome_rounded;
+        badgeText = '${_aiService.selectedModel} (Bulut)';
+      }
+    } else {
+      if (!isReady) {
+        badgeBg = const Color(0xFFFF9E64);
+        badgeIcon = Icons.download_rounded;
+        badgeText = langService.trEnDe('Qwen 3B (Model İndir)', 'Qwen 3B (Download)', 'Qwen 3B (Herunterladen)');
+      } else if (isStarting) {
+        badgeBg = const Color(0xFF7AA2F7);
+        badgeIcon = Icons.hourglass_top_rounded;
+        badgeText = '${_aiService.selectedModel} (${_localAiService.startupElapsedSeconds}s)';
+      } else if (isRunning) {
+        badgeBg = const Color(0xFF9ECE6A);
+        badgeIcon = Icons.offline_bolt_rounded;
+        badgeText = '${_aiService.selectedModel} (Aktif)';
+      } else {
+        badgeBg = const Color(0xFF414868);
+        badgeIcon = Icons.power_settings_new_rounded;
+        badgeText = '${_aiService.selectedModel} (Kapalı)';
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -245,7 +507,7 @@ class AiPanelState extends State<AiPanel> {
         children: [
           // Durum Rozeti
           InkWell(
-            onTap: !isReady ? _openSettings : null,
+            onTap: !isReady ? _openSettings : (!isGemini && !isRunning && !isStarting ? () => _localAiService.startServer() : null),
             borderRadius: BorderRadius.circular(4),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
@@ -270,6 +532,34 @@ class AiPanelState extends State<AiPanel> {
               ),
             ),
           ),
+
+          // Eğer çalışıyorsa Durdur (RAM Boşalt) Butonu (Sadece yerel motor için)
+          if (!isGemini && isRunning) ...[
+            const SizedBox(width: 6),
+            InkWell(
+              onTap: () => _localAiService.stopServer(),
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF33202A),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFFF7768E).withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.stop_circle_outlined, size: 12, color: Color(0xFFF7768E)),
+                    const SizedBox(width: 4),
+                    Text(
+                      langService.trEnDe('Durdur', 'Stop', 'Stoppen'),
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFF7768E)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
 
           const Spacer(),
 

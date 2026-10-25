@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:path/path.dart' as p;
 import '../models/compiler_error.dart';
 import 'local_ai_service.dart';
 import 'app_language_service.dart';
 import 'compiler_service.dart';
+import 'smart_error_advisor.dart';
+import 'app_path_service.dart';
 
 class AiMessage {
   final String text;
@@ -32,34 +33,51 @@ class AiAssistantService {
   /// Kalıcı mesaj listesi (Sekme değişimlerinde asla silinmez)
   final List<AiMessage> messages = [];
 
-  // Sağlayıcı: Her zaman Dahili Çevrimdışı ('local')
-  String get provider => 'local';
-  bool get isLocal => true;
-  bool get isCloud => false;
+  // Sağlayıcı: 'local' (Dahili Çevrimdışı Qwen) veya 'gemini' (Google Gemini API)
+  String _provider = 'local';
+  String _geminiApiKey = '';
+  String _geminiModel = 'gemini-2.0-flash';
+
+  String get provider => _provider;
+  bool get isLocal => _provider == 'local';
+  bool get isCloud => _provider == 'gemini';
+  bool get isGemini => _provider == 'gemini';
 
   String get language => AppLanguageService().aiLanguage;
   bool get isTurkish => AppLanguageService().isAiTurkish;
   bool get isEnglish => AppLanguageService().isAiEnglish;
   bool get isGerman => AppLanguageService().isAiGerman;
 
-  String get apiKey => '';
-  bool get hasApiKey => false;
-  String get selectedCloudModel => '';
+  String get geminiApiKey => _geminiApiKey;
+  String get geminiModel => _geminiModel;
+  bool get hasGeminiApiKey => _geminiApiKey.trim().isNotEmpty;
 
-  String get selectedModel => _localAiService.activeModelName ?? 'qwen2.5-coder-1.5b';
+  String get apiKey => _geminiApiKey;
+  bool get hasApiKey => hasGeminiApiKey;
+  String get selectedCloudModel => _geminiModel;
 
-  bool get isLocalAiAvailable => _localAiService.isLocalAiSupported();
-
-  bool get isReady => isLocalAiAvailable;
-
-  File _getConfigFile() {
-    final userProfile = Platform.environment['USERPROFILE'] ?? 'C:\\';
-    final configDir = Directory(p.join(userProfile, '.cstudio'));
-    if (!configDir.existsSync()) {
-      configDir.createSync(recursive: true);
+  String get selectedModel {
+    if (isGemini) {
+      if (_geminiModel == 'gemini-2.0-flash') return 'Gemini 2.0 Flash';
+      if (_geminiModel == 'gemini-1.5-flash') return 'Gemini 1.5 Flash';
+      if (_geminiModel == 'gemini-1.5-pro') return 'Gemini 1.5 Pro';
+      return _geminiModel;
     }
-    return File(p.join(configDir.path, 'ai_config.json'));
+    return Platform.isWindows
+        ? _localAiService.activeModelDisplayName
+        : 'C-Studio AI Mobile (Smart C Engine)';
   }
+
+  bool get isLocalAiAvailable => Platform.isWindows ? _localAiService.isLocalAiSupported() : true;
+
+  bool get isReady {
+    if (isGemini) {
+      return hasGeminiApiKey;
+    }
+    return isLocalAiAvailable;
+  }
+
+  File _getConfigFile() => AppPathService.aiConfigFile;
 
   void loadConfig() {
     try {
@@ -68,6 +86,19 @@ class AiAssistantService {
         final content = file.readAsStringSync();
         final data = jsonDecode(content);
         if (data is Map) {
+          if (data.containsKey('provider')) {
+            _provider = data['provider'] as String;
+          }
+          if (data.containsKey('geminiApiKey')) {
+            _geminiApiKey = data['geminiApiKey'] as String;
+          } else if (data.containsKey('apiKey')) {
+            _geminiApiKey = data['apiKey'] as String;
+          }
+          if (data.containsKey('geminiModel')) {
+            _geminiModel = data['geminiModel'] as String;
+          } else if (data.containsKey('cloudModel')) {
+            _geminiModel = data['cloudModel'] as String;
+          }
           if (data.containsKey('language')) {
             final lang = data['language'] as String;
             AppLanguageService().setAiLanguage(lang);
@@ -78,12 +109,17 @@ class AiAssistantService {
   }
 
   void saveConfig({String? provider, String? apiKey, String? cloudModel, String? language}) {
+    if (provider != null) _provider = provider;
+    if (apiKey != null) _geminiApiKey = apiKey.trim();
+    if (cloudModel != null) _geminiModel = cloudModel;
     if (language != null) AppLanguageService().setAiLanguage(language);
 
     try {
       final file = _getConfigFile();
       final data = {
-        'provider': 'local',
+        'provider': _provider,
+        'geminiApiKey': _geminiApiKey,
+        'geminiModel': _geminiModel,
         'language': AppLanguageService().aiLanguage,
         'updatedAt': DateTime.now().toIso8601String(),
       };
@@ -91,14 +127,68 @@ class AiAssistantService {
     } catch (_) {}
   }
 
-  void setProvider(String prov) {}
+  void setProvider(String prov) {
+    _provider = prov;
+    saveConfig(provider: prov);
+  }
 
   void setLanguage(String lang) {
     AppLanguageService().setAiLanguage(lang);
     saveConfig(language: lang);
   }
 
-  void saveApiKey(String key, {String? model}) {}
+  void saveApiKey(String key, {String? model}) {
+    _geminiApiKey = key.trim();
+    if (model != null) _geminiModel = model;
+    saveConfig(apiKey: _geminiApiKey, cloudModel: _geminiModel);
+  }
+
+  /// Google Gemini API bağlantısını test eder
+  Future<bool> testGeminiConnection({String? apiKey, String? model}) async {
+    final key = (apiKey ?? _geminiApiKey).trim();
+    final mod = model ?? _geminiModel;
+    if (key.isEmpty) return false;
+
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$mod:generateContent?key=$key',
+    );
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 12);
+
+    try {
+      final req = await client.postUrl(url);
+      req.headers.set('Content-Type', 'application/json; charset=utf-8');
+      final payload = {
+        'contents': [
+          {
+            'role': 'user',
+            'parts': [
+              {'text': 'Ping'}
+            ]
+          }
+        ],
+        'generationConfig': {
+          'maxOutputTokens': 5,
+        }
+      };
+      req.add(utf8.encode(jsonEncode(payload)));
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+      if (res.statusCode == 200) {
+        return true;
+      }
+      try {
+        final errJson = jsonDecode(body);
+        final errMsg = errJson['error']?['message'] ?? body;
+        throw Exception(errMsg);
+      } catch (_) {
+        throw Exception('HTTP ${res.statusCode}: $body');
+      }
+    } finally {
+      client.close();
+    }
+  }
 
   /// Kodlama ve yazılım dışı konuları tespit eder
   static bool isNonCodingTopic(String prompt) {
@@ -231,17 +321,35 @@ class AiAssistantService {
       }
     }
 
-    // 1. Yerel Çevrimdışı Yapay Zeka Modu
+    // 1. Google Gemini API (Bulut - Hızlı & Ücretsiz)
+    if (isGemini) {
+      return await _sendGeminiPrompt(
+        prompt: prompt,
+        history: historyList,
+        currentCode: currentCode,
+        compilerOutput: compilerCheck,
+        systemInstruction: sys,
+      );
+    }
+
+    // 2. Android / Mobil Yapay Zeka Desteği
+    if (!Platform.isWindows) {
+      return await _generateMobileAiResponse(
+        prompt: prompt,
+        currentCode: currentCode,
+        compilerOutput: compilerCheck,
+      );
+    }
+
+    // 3. Windows Yerel Çevrimdışı Yapay Zeka Modu (Qwen)
     if (!isLocalAiAvailable) {
       throw Exception(
         isTurkish
             ? 'Dahili Yerel Yapay Zeka dosyaları bulunamadı!\n'
-                'Lütfen C-Studio klasöründe ai/runtime/llama-server.exe ve ai/models/*.gguf dosyalarının olduğundan emin olun.'
+                'Lütfen C-Studio klasöründe ai/runtime/llama-server.exe ve ai/models/*.gguf dosyalarının olduğundan emin olun veya Ayarlar > Yapay Zeka sekmesinden Google Gemini API modunu seçin.'
             : (isGerman
-                ? 'Lokale KI-Dateien nicht gefunden!\n'
-                    'Bitte stellen Sie sicher, dass ai/runtime/llama-server.exe und ai/models/*.gguf im C-Studio-Verzeichnis vorhanden sind.'
-                : 'Local AI engine files not found!\n'
-                    'Please make sure ai/runtime/llama-server.exe and ai/models/*.gguf exist in the C-Studio directory.'),
+                ? 'Lokale KI-Dateien nicht gefunden! Wählen Sie den Gemini API-Modus in den Einstellungen.'
+                : 'Local AI engine files not found! Select Gemini API in Settings or download local model.'),
       );
     }
 
@@ -254,6 +362,224 @@ class AiAssistantService {
       compilerOutput: compInfo,
       systemInstruction: sys,
     );
+  }
+
+  Future<String> _sendGeminiPrompt({
+    required String prompt,
+    List<Map<String, String>>? history,
+    String? currentCode,
+    String? compilerOutput,
+    String? systemInstruction,
+  }) async {
+    if (_geminiApiKey.trim().isEmpty) {
+      throw Exception(
+        isTurkish
+            ? 'Google Gemini API Anahtarı eksik!\nLütfen Ayarlar > Yapay Zeka sekmesinden API anahtarınızı girin.'
+            : (isGerman
+                ? 'Google Gemini API-Schlüssel fehlt!\nBitte geben Sie Ihren Schlüssel in Einstellungen > KI ein.'
+                : 'Google Gemini API key missing!\nPlease enter your key in Settings > AI tab.'),
+      );
+    }
+
+    final sys = systemInstruction ?? getEffectiveSystemInstruction();
+    final buffer = StringBuffer();
+    if (currentCode != null && currentCode.trim().isNotEmpty) {
+      buffer.writeln('Editördeki C Kodu:\n```c\n$currentCode\n```\n');
+    }
+    if (compilerOutput != null && compilerOutput.trim().isNotEmpty) {
+      buffer.writeln('Derleyici Çıktısı:\n$compilerOutput\n');
+    }
+    buffer.writeln('Kullanıcının Sorusu / İstemi:\n$prompt\n');
+    buffer.writeln('Lütfen bu soruya detaylı, öğretici ve açıklayıcı bir yanıt ver.');
+
+    final userContent = buffer.toString().trim();
+    final contents = <Map<String, dynamic>>[];
+
+    if (history != null && history.isNotEmpty) {
+      final recent = history.length > 8 ? history.sublist(history.length - 8) : history;
+      for (final m in recent) {
+        final r = (m['role'] == 'user') ? 'user' : 'model';
+        final c = m['content'] ?? '';
+        if (c.trim().isNotEmpty) {
+          contents.add({
+            'role': r,
+            'parts': [
+              {'text': c}
+            ]
+          });
+        }
+      }
+    }
+
+    contents.add({
+      'role': 'user',
+      'parts': [
+        {'text': userContent}
+      ]
+    });
+
+    final payload = {
+      'systemInstruction': {
+        'parts': [
+          {'text': sys}
+        ]
+      },
+      'contents': contents,
+      'generationConfig': {
+        'temperature': 0.4,
+        'maxOutputTokens': 2048,
+        'topP': 0.9,
+      }
+    };
+
+    final url = Uri.parse(
+      'https://generativelanguage.googleapis.com/v1beta/models/$_geminiModel:generateContent?key=$_geminiApiKey',
+    );
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 35);
+
+    try {
+      final req = await client.postUrl(url);
+      req.headers.set('Content-Type', 'application/json; charset=utf-8');
+      req.add(utf8.encode(jsonEncode(payload)));
+
+      final res = await req.close();
+      final body = await res.transform(utf8.decoder).join();
+
+      if (res.statusCode != 200) {
+        try {
+          final errJson = jsonDecode(body);
+          final msg = errJson['error']?['message'] ?? body;
+          throw Exception('Gemini API Hatası (${res.statusCode}): $msg');
+        } catch (_) {
+          throw Exception('Gemini API Hatası (${res.statusCode}): $body');
+        }
+      }
+
+      final data = jsonDecode(body);
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) {
+        throw Exception(isTurkish ? 'Gemini yanıt üretemedi.' : 'Gemini generated no response.');
+      }
+
+      final parts = candidates.first['content']?['parts'] as List?;
+      if (parts == null || parts.isEmpty) {
+        throw Exception(isTurkish ? 'Gemini boş içerik döndürdü.' : 'Gemini returned empty content.');
+      }
+
+      final text = parts.map((p) => p['text'] ?? '').join();
+      return text.trim();
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<String> _generateMobileAiResponse({
+    required String prompt,
+    String? currentCode,
+    String? compilerOutput,
+  }) async {
+    final lower = prompt.toLowerCase();
+
+    // 1. Derleme hatası varsa veya soruluyorsa
+    if (compilerOutput != null && compilerOutput.isNotEmpty) {
+      final errors = SmartErrorAdvisor.parseErrors(compilerOutput, 'main.c');
+      if (errors.isNotEmpty) {
+        final err = errors.first;
+        final diagnosis = err.diagnosis;
+        String fixedCode = currentCode ?? '';
+        if (currentCode != null) {
+          fixedCode = SmartErrorAdvisor.applyAutoFix(currentCode, err);
+        }
+        if (isTurkish) {
+          final expl = diagnosis?.getDisplayExplanation('tr') ?? err.message;
+          final fix = diagnosis?.getDisplayHowToFix('tr') ?? "İlgili sözdizimi kuralı düzeltildi.";
+          return '🔍 **Hata Tespiti ve Çözümü:**\n\n'
+              '• **Nerede:** Satır ${err.line}, Sütun ${err.column} (${err.fileName})\n'
+              '• **Neden:** $expl\n'
+              '• **Nasıl Düzeltildiği:** $fix\n\n'
+              'Düzeltilmiş tam ve çalışan C kodu:\n\n'
+              '```c\n$fixedCode\n```';
+        } else if (isGerman) {
+          final expl = diagnosis?.getDisplayExplanation('de') ?? err.message;
+          final fix = diagnosis?.getDisplayHowToFix('de') ?? "Syntaxregel korrigiert.";
+          return '🔍 **Fehleranalyse & Behebung:**\n\n'
+              '• **Wo:** Zeile ${err.line}, Spalte ${err.column} (${err.fileName})\n'
+              '• **Warum:** $expl\n'
+              '• **Wie behoben:** $fix\n\n'
+              'Vollständiger korrigierter C-Code:\n\n'
+              '```c\n$fixedCode\n```';
+        } else {
+          final expl = diagnosis?.getDisplayExplanation('en') ?? err.message;
+          final fix = diagnosis?.getDisplayHowToFix('en') ?? "Syntax rule corrected.";
+          return '🔍 **Error Diagnosis & Fix:**\n\n'
+              '• **Where:** Line ${err.line}, Column ${err.column} (${err.fileName})\n'
+              '• **Why:** $expl\n'
+              '• **How It Was Fixed:** $fix\n\n'
+              'Fixed working C code:\n\n'
+              '```c\n$fixedCode\n```';
+        }
+      }
+    }
+
+    // 2. Pointer / İşaretçi Soruları
+    if (lower.contains('pointer') || lower.contains('işaretçi') || lower.contains('isaretci') || lower.contains('zeiger')) {
+      if (isTurkish) {
+        return '💡 **C Dilinde Pointer (İşaretçiler):**\n\n'
+            'Pointer, bellekteki bir değişkenin adresini (referansını) tutan özel bir değişkendir.\n\n'
+            '• `&` operatörü: Bir değişkenin bellek adresini verir (Örn: `&sayi`).\n'
+            '• `*` operatörü: Tanımlarken işaretçi belirtir, kullanımda ise o adresteki değere erişir (dereference).\n\n'
+            '```c\n#include <stdio.h>\n\nint main() {\n    int sayi = 42;\n    int *ptr = &sayi; // ptr, sayi degiskeninin adresini tutar\n\n    printf("Deger: %d\\n", sayi);\n    printf("Adres: %p\\n", (void*)ptr);\n    printf("Pointer uzerinden deger: %d\\n", *ptr);\n\n    *ptr = 100; // Pointer uzerinden degeri degistir\n    printf("Guncel Deger: %d\\n", sayi);\n\n    return 0;\n}\n```';
+      } else if (isGerman) {
+        return '💡 **Zeiger (Pointers) in C:**\n\n'
+            'Ein Zeiger speichert die Speicheradresse einer Variablen.\n\n'
+            '• `&`: Adress-Operator (liefert die Adresse).\n'
+            '• `*`: Dereferenzierungs-Operator (greift auf den Wert an der Adresse zu).\n\n'
+            '```c\n#include <stdio.h>\n\nint main() {\n    int zahl = 42;\n    int *ptr = &zahl;\n\n    printf("Wert: %d\\n", zahl);\n    printf("Adresse: %p\\n", (void*)ptr);\n    printf("Wert via Zeiger: %d\\n", *ptr);\n\n    *ptr = 100;\n    printf("Neuer Wert: %d\\n", zahl);\n    return 0;\n}\n```';
+      } else {
+        return '💡 **Pointers in C:**\n\n'
+            'A pointer is a variable that stores the memory address of another variable.\n\n'
+            '• `&`: Address-of operator (returns address).\n'
+            '• `*`: Dereference operator (accesses value at address).\n\n'
+            '```c\n#include <stdio.h>\n\nint main() {\n    int num = 42;\n    int *ptr = &num;\n\n    printf("Value: %d\\n", num);\n    printf("Address: %p\\n", (void*)ptr);\n    printf("Value via pointer: %d\\n", *ptr);\n\n    *ptr = 100;\n    printf("Updated value: %d\\n", num);\n    return 0;\n}\n```';
+      }
+    }
+
+    // 3. Döngü / Loop Soruları
+    if (lower.contains('döngü') || lower.contains('dongu') || lower.contains('loop') || lower.contains('schleife') || lower.contains('for') || lower.contains('while')) {
+      if (isTurkish) {
+        return '🔄 **C Dilinde Döngüler (Loops):**\n\n'
+            'C dilinde üç temel döngü vardır: `for`, `while` ve `do-while`.\n\n'
+            '```c\n#include <stdio.h>\n\nint main() {\n    // 1. For dongusu\n    printf("--- For Dongusu ---\\n");\n    for (int i = 1; i <= 5; i++) {\n        printf("%d ", i);\n    }\n    printf("\\n\\n");\n\n    // 2. While dongusu\n    printf("--- While Dongusu ---\\n");\n    int j = 1;\n    while (j <= 5) {\n        printf("%d ", j);\n        j++;\n    }\n    printf("\\n");\n\n    return 0;\n}\n```';
+      } else {
+        return '🔄 **Loops in C:**\n\n'
+            'C provides three primary loops: `for`, `while`, and `do-while`.\n\n'
+            '```c\n#include <stdio.h>\n\nint main() {\n    // For loop\n    printf("For loop: ");\n    for (int i = 1; i <= 5; i++) {\n        printf("%d ", i);\n    }\n    printf("\\n");\n    return 0;\n}\n```';
+      }
+    }
+
+    // 4. Genel C Kodlama / Geliştirme Yanıtı
+    if (currentCode != null && currentCode.trim().isNotEmpty) {
+      if (isTurkish) {
+        return '🚀 **C-Studio Akıllı Kod Asistanı:**\n\n'
+            'İsteğinizi inceledim. Kodunuzu geliştirmek veya çalıştırmak için araç çubuğundaki **Derle & Çalıştır (F5)** butonunu kullanabilirsiniz.\n\n'
+            'İşte önerilen çalışan C kodu:\n\n'
+            '```c\n$currentCode\n```';
+      } else {
+        return '🚀 **C-Studio Smart Assistant:**\n\n'
+            'Here is the current working C code for your request. You can press **Build & Run (F5)** to compile and execute:\n\n'
+            '```c\n$currentCode\n```';
+      }
+    }
+
+    if (isTurkish) {
+      return '🚀 **C-Studio Akıllı Kod Asistanı:**\n\n'
+          'C programlama ile ilgili sorularınızı sorabilir, koddaki hataların çözümlerini öğrenebilir veya yeni algoritmalar isteyebilirsiniz. Başlamak için editöre kodunuzu yazın ve F5 ile derleyin!';
+    } else {
+      return '🚀 **C-Studio Smart Assistant:**\n\n'
+          'Ask me any C programming question, debug code errors, or request algorithms. Write your code in the editor and press F5 to compile!';
+    }
   }
 
   Future<String> explainAndFixError({

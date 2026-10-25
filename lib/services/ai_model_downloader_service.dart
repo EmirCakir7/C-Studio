@@ -10,8 +10,8 @@ class AiModelDownloaderService extends ChangeNotifier {
   AiModelDownloaderService._internal();
 
   static const String modelUrl =
-      'https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q3_k_m.gguf';
-  static const String modelFileName = 'qwen2.5-coder-1.5b-instruct-q3_k_m.gguf';
+      'https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf';
+  static const String modelFileName = 'qwen2.5-coder-3b-instruct-q4_k_m.gguf';
 
   bool _isDownloading = false;
   bool get isDownloading => _isDownloading;
@@ -25,7 +25,7 @@ class AiModelDownloaderService extends ChangeNotifier {
   int _downloadedBytes = 0;
   int get downloadedBytes => _downloadedBytes;
 
-  int _totalBytes = 924456000; // ~881.6 MB fallback
+  int _totalBytes = 2104932800; // ~1.96 GB (Qwen 2.5 Coder 3B Q4_K_M)
   int get totalBytes => _totalBytes;
 
   String _speedText = '';

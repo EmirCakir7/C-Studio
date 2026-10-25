@@ -26,6 +26,13 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
 
   late String _selectedUiLanguage;
   late String _selectedAiLanguage;
+  late String _selectedProvider;
+  late TextEditingController _geminiApiKeyController;
+  late String _selectedGeminiModel;
+  bool _obscureApiKey = true;
+  bool _isTestingApiKey = false;
+  String? _testStatusMessage;
+  bool? _testSuccess;
 
   @override
   void initState() {
@@ -33,17 +40,27 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
     _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTab);
     _selectedUiLanguage = _langService.uiLanguage;
     _selectedAiLanguage = _langService.aiLanguage;
+    _selectedProvider = _aiService.provider;
+    _geminiApiKeyController = TextEditingController(text: _aiService.geminiApiKey);
+    _selectedGeminiModel = _aiService.geminiModel;
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _geminiApiKeyController.dispose();
     super.dispose();
   }
 
   void _saveAndApply() {
     _langService.setUiLanguage(_selectedUiLanguage, syncAiLanguage: false);
     _langService.setAiLanguage(_selectedAiLanguage);
+    _aiService.saveConfig(
+      provider: _selectedProvider,
+      apiKey: _geminiApiKeyController.text.trim(),
+      cloudModel: _selectedGeminiModel,
+      language: _selectedAiLanguage,
+    );
     Navigator.of(context).pop(true);
   }
 
@@ -180,6 +197,23 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
   }
 
   void _openLanguageCreatorTool() {
+    if (!Platform.isWindows) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _langService.trEnDe(
+              'Dil oluşturucu aracı masaüstü için tasarlanmıştır. Mobilde "Özel Dil İçe Aktar" butonu ile hazırlanan .json paketlerini yükleyebilirsiniz.',
+              'Language creator tool is for desktop. On mobile, you can import .json packages directly via "Import Custom Language".',
+              'Der Sprachpaket-Ersteller ist für Desktop gedacht. Auf Mobilgeräten können Sie .json-Pakete direkt importieren.',
+            ),
+          ),
+          backgroundColor: const Color(0xFF7AA2F7),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     try {
       final exeCandidates = [
         p.join(Directory.current.path, 'C-Studio_Language_Creator.exe'),
@@ -611,19 +645,28 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
           const SizedBox(height: 16),
 
           _buildSectionHeader(
-            title: _langService.trEnDe('Yapay Zeka Motoru', 'AI Engine', 'KI-Engine'),
-            subtitle: _langService.trEnDe('Dahili çevrimdışı yerel model bilgileri', 'Built-in offline local model information', 'Informationen zum integrierten Offline-Modell'),
+            title: _langService.trEnDe('Yapay Zeka Motoru Sağlayıcısı', 'AI Engine Provider', 'KI-Engine-Anbieter'),
+            subtitle: _langService.trEnDe(
+              'İster %100 çevrimdışı yerel Qwen modelini, ister Google Gemini bulut API\'sini kullanın',
+              'Choose between 100% offline local Qwen model or Google Gemini cloud API',
+              'Wählen Sie zwischen dem 100% Offline-Qwen-Modell oder der Google Gemini Cloud-API',
+            ),
             icon: Icons.psychology_rounded,
           ),
           const SizedBox(height: 8),
 
+          // 1. DAHİLİ ÇEVRİMDIŞI YEREL MOTOR (QWEN)
           _buildEngineCard(
-            title: _langService.trEnDe('Dahili Çevrimdışı (Qwen 2.5 Coder 1.5B)', 'Built-in Offline (Qwen 2.5 Coder 1.5B)', 'Integriert Offline (Qwen 2.5 Coder 1.5B)'),
+            title: _langService.trEnDe(
+              'Dahili Çevrimdışı (Qwen 2.5 Coder 3B)',
+              'Built-in Offline (Qwen 2.5 Coder 3B)',
+              'Integriert Offline (Qwen 2.5 Coder 3B)',
+            ),
             badge: _langService.trEnDe('TAMAMEN ÇEVRİMDIŞI', 'FULLY OFFLINE', 'VOLLSTÄNDIG OFFLINE'),
             badgeColor: const Color(0xFF9ECE6A),
             icon: Icons.offline_bolt_rounded,
-            isSelected: true,
-            onTap: () {},
+            isSelected: _selectedProvider == 'local',
+            onTap: () => setState(() => _selectedProvider = 'local'),
             children: [
               Text(
                 _langService.trEnDe(
@@ -642,7 +685,7 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                 ),
                 child: Text(
                   isLocalSupported
-                      ? '✓ Model: ${localModels.isNotEmpty ? localModels.first.path.split(RegExp(r"[\\/]")).last : "qwen2.5-coder-1.5b-instruct-q3_k_m.gguf"}'
+                      ? '✓ Model: ${localModels.isNotEmpty ? localModels.first.path.split(RegExp(r"[\\/]")).last : "qwen2.5-coder-3b-instruct-q4_k_m.gguf"}'
                       : _langService.trEnDe(
                           '✗ Model dosyası ai/models/ klasöründe bulunamadı.',
                           '✗ Model file not found in ai/models/ directory.',
@@ -661,6 +704,173 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                   onDownloadCompleted: () {
                     setState(() {});
                   },
+                ),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // 2. GOOGLE GEMINI API (BULUT)
+          _buildEngineCard(
+            title: 'Google Gemini API (Bulut / Cloud)',
+            badge: _langService.trEnDe('ÜCRETSİZ & HIZLI', 'FREE & FAST', 'KOSTENLOS & SCHNELL'),
+            badgeColor: const Color(0xFF7AA2F7),
+            icon: Icons.auto_awesome_rounded,
+            isSelected: _selectedProvider == 'gemini',
+            onTap: () => setState(() => _selectedProvider = 'gemini'),
+            children: [
+              Text(
+                _langService.trEnDe(
+                  'Sıfır RAM ve CPU tüketimi. Google AI Studio üzerinden tamamen ücretsiz API anahtarınızı alarak saniyeler içinde güçlü analizler alabilirsiniz.',
+                  'Zero RAM and CPU usage. Get a free API key from Google AI Studio for instant, high-speed coding assistance.',
+                  'Kein RAM- und CPU-Verbrauch. Kostenlosen API-Schlüssel von Google AI Studio für sofortige Antworten nutzen.',
+                ),
+                style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFA9B1D6), height: 1.3),
+              ),
+              if (_selectedProvider == 'gemini') ...[
+                const SizedBox(height: 10),
+                // Model seçimi
+                Row(
+                  children: [
+                    Text(
+                      _langService.trEnDe('Model:', 'Model:', 'Modell:'),
+                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFFC0CAF5)),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF13141C),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF24283B)),
+                      ),
+                      child: DropdownButton<String>(
+                        value: _selectedGeminiModel,
+                        dropdownColor: const Color(0xFF16161E),
+                        underline: const SizedBox.shrink(),
+                        isDense: true,
+                        style: GoogleFonts.jetBrainsMono(fontSize: 11, color: const Color(0xFF7AA2F7)),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'gemini-2.0-flash',
+                            child: Text('gemini-2.0-flash (Önerilen)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'gemini-1.5-flash',
+                            child: Text('gemini-1.5-flash'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'gemini-1.5-pro',
+                            child: Text('gemini-1.5-pro'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedGeminiModel = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // API Key girişi
+                TextField(
+                  controller: _geminiApiKeyController,
+                  obscureText: _obscureApiKey,
+                  style: GoogleFonts.jetBrainsMono(fontSize: 11.5, color: Colors.white),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color(0xFF13141C),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    hintText: 'Google Gemini API Key (AIzaSy...)',
+                    hintStyle: const TextStyle(color: Color(0xFF565F89), fontSize: 11),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureApiKey ? Icons.visibility_off : Icons.visibility,
+                        size: 16,
+                        color: const Color(0xFF7AA2F7),
+                      ),
+                      onPressed: () => setState(() => _obscureApiKey = !_obscureApiKey),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    // Test Butonu
+                    ElevatedButton.icon(
+                      onPressed: _isTestingApiKey
+                          ? null
+                          : () async {
+                              final key = _geminiApiKeyController.text.trim();
+                              if (key.isEmpty) return;
+                              setState(() {
+                                _isTestingApiKey = true;
+                                _testStatusMessage = null;
+                                _testSuccess = null;
+                              });
+                              try {
+                                final ok = await _aiService.testGeminiConnection(
+                                  apiKey: key,
+                                  model: _selectedGeminiModel,
+                                );
+                                if (mounted) {
+                                  setState(() {
+                                    _isTestingApiKey = false;
+                                    _testSuccess = ok;
+                                    _testStatusMessage = ok
+                                        ? _langService.trEnDe('✔ Bağlantı başarılı!', '✔ Connection successful!', '✔ Verbindung erfolgreich!')
+                                        : _langService.trEnDe('✗ Bağlantı başarısız.', '✗ Connection failed.', '✗ Verbindung fehlgeschlagen.');
+                                  });
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  setState(() {
+                                    _isTestingApiKey = false;
+                                    _testSuccess = false;
+                                    _testStatusMessage = '✗ $e';
+                                  });
+                                }
+                              }
+                            },
+                      icon: _isTestingApiKey
+                          ? const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF13141C)),
+                            )
+                          : const Icon(Icons.check_circle_outline_rounded, size: 14),
+                      label: Text(
+                        _langService.trEnDe('Bağlantıyı Test Et', 'Test Connection', 'Verbindung testen'),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7AA2F7),
+                        foregroundColor: const Color(0xFF13141C),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_testStatusMessage != null) ...[
+                      Expanded(
+                        child: Text(
+                          _testStatusMessage!,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: (_testSuccess == true) ? const Color(0xFF9ECE6A) : const Color(0xFFF7768E),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ],
