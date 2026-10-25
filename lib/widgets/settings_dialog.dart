@@ -43,6 +43,12 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
     _selectedProvider = _aiService.provider;
     _geminiApiKeyController = TextEditingController(text: _aiService.geminiApiKey);
     _selectedGeminiModel = _aiService.geminiModel;
+    if (_selectedGeminiModel == 'gemini-3.8-pro' ||
+        (_selectedGeminiModel != 'gemini-3.8-flash' &&
+         _selectedGeminiModel != 'gemini-3.6-flash' &&
+         _selectedGeminiModel != 'gemini-4-argon')) {
+      _selectedGeminiModel = 'gemini-3.8-flash';
+    }
   }
 
   @override
@@ -754,15 +760,15 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                         items: const [
                           DropdownMenuItem(
                             value: 'gemini-3.8-flash',
-                            child: Text('gemini-3.8-flash (Önerilen / Hızlı)'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'gemini-3.8-pro',
-                            child: Text('gemini-3.8-pro (Derin Analiz)'),
+                            child: Text('gemini-3.8-flash (Önerilen / En Güncel & Hızlı)'),
                           ),
                           DropdownMenuItem(
                             value: 'gemini-3.6-flash',
-                            child: Text('gemini-3.6-flash (Hafif)'),
+                            child: Text('gemini-3.6-flash (Kararlı Flash)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'gemini-4-argon',
+                            child: Text('gemini-4-argon (Flagship / Derin Akıl Yürütme)'),
                           ),
                         ],
                         onChanged: (val) {

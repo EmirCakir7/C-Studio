@@ -4,7 +4,7 @@
 
 1. **Çift Yapay Zeka Motoru: Yerel Qwen 3B + Google Gemini API**
    - **Qwen 2.5 Coder 3B (Sweet Spot):** Dahili yerel yapay zeka modeli 1.5B'den **Qwen 2.5 Coder 3B Instruct** sürümüne yükseltildi. C işaretçileri (pointers), dinamik bellek (`malloc`/`free`) ve algoritma mantığında çok daha zeki ve öğretici yanıtlar verirken bilgisayar kaynaklarını yormaz.
-   - **Google Gemini API (Bulut / Cloud):** Sıfır sistem ve RAM yükü isteyenler için **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.8-pro`, `gemini-3.6-flash`) desteği eklendi. Google AI Studio'dan alacağınız ücretsiz API anahtarınızla anında buluttan analiz alabilirsiniz.
+   - **Google Gemini API (Bulut / Cloud):** Sıfır sistem ve RAM yükü isteyenler için **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-4-argon`) desteği eklendi. Google AI Studio'dan alacağınız ücretsiz API anahtarınızla anında buluttan analiz alabilirsiniz.
    - **İsteğe Bağlı Başlatma / Durdurma Kontrolleri:** Sohbet ekranına **"Yapay Zekayı Başlat"** butonu, canlı RAM yükleme durumu, ilerleme çubuğu ve RAM'i istediğiniz an sıfırlamak için **"Durdur"** butonu eklendi.
 
 2. **2 Ayrı Windows Sürümü (Two Windows Editions):**

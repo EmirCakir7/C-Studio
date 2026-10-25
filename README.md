@@ -26,7 +26,7 @@
 * **⚙️ Built-in Offline Compiler:** Pre-bundled 64-bit Tiny C Compiler (TCC) for millisecond compile times (`F5`) and live interactive terminal.
 * **🤖 Dual AI Assistance:**
   * **Offline Local AI:** Bundled **Qwen 2.5 Coder 3B Instruct** running 100% locally on your CPU/RAM with on-demand Start/Stop memory management.
-  * **Free Cloud AI:** Optional **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.8-pro`, `gemini-3.6-flash`) for zero RAM overhead.
+  * **Free Cloud AI:** Optional **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-4-argon`) for zero RAM overhead.
 * **🌐 Multilingual Support:** English, 🇹🇷 Türkçe, 🇩🇪 Deutsch, plus custom language pack importer and creator tool (`.cstudio-lang`).
 * **💡 Smart Error Advisor:** Human-readable compiler error diagnostics (Where, Why, How to fix) with 1-click auto-fixes.
 
@@ -66,7 +66,7 @@ C-Studio is made possible thanks to world-class open-source projects and develop
 * **[Fabrice Bellard](https://bellard.org/) & TCC Team** – Creators and maintainers of the **Tiny C Compiler (TCC)**, providing the embedded, ultra-fast 64-bit compilation engine.
 * **[Georgi Gerganov](https://github.com/ggerganov) & [llama.cpp](https://github.com/ggerganov/llama.cpp)** – The groundbreaking C/C++ offline LLM inference framework powering C-Studio's local offline AI engine (`llama-server.exe`).
 * **[Qwen Team (Alibaba Cloud)](https://github.com/QwenLM)** – Creators of the remarkable **Qwen 2.5 Coder** model family (`Qwen2.5-Coder-3B-Instruct`), delivering state-of-the-art C coding intelligence in compact weights.
-* **[Google DeepMind](https://deepmind.google/) & Google Gemini Team** – Developers of the **Google Gemini API** (`gemini-3.8-flash` & `gemini-3.8-pro`), enabling blazing-fast cloud AI coding capabilities.
+* **[Google DeepMind](https://deepmind.google/) & Google Gemini Team** – Developers of the **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-4-argon`), enabling blazing-fast cloud AI coding capabilities.
 * **[Flutter](https://flutter.dev) & Dart Community** – The cross-platform framework by Google enabling high-performance desktop graphics and responsive layouts.
 * **Open Source Contributors** – Sincere appreciation to authors of `google_fonts`, `file_picker`, `path`, and community contributors who help translate and test C-Studio.
 

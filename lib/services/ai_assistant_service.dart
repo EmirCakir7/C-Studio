@@ -59,7 +59,7 @@ class AiAssistantService {
   String get selectedModel {
     if (isGemini) {
       if (_geminiModel == 'gemini-3.8-flash') return 'Gemini 3.8 Flash';
-      if (_geminiModel == 'gemini-3.8-pro') return 'Gemini 3.8 Pro';
+      if (_geminiModel == 'gemini-4-argon') return 'Gemini 4 Argon';
       if (_geminiModel == 'gemini-3.6-flash') return 'Gemini 3.6 Flash';
       return _geminiModel;
     }
@@ -98,6 +98,9 @@ class AiAssistantService {
             _geminiModel = data['geminiModel'] as String;
           } else if (data.containsKey('cloudModel')) {
             _geminiModel = data['cloudModel'] as String;
+          }
+          if (_geminiModel == 'gemini-3.8-pro' || _geminiModel.isEmpty) {
+            _geminiModel = 'gemini-3.8-flash';
           }
           if (data.containsKey('language')) {
             final lang = data['language'] as String;
