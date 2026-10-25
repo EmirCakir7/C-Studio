@@ -36,7 +36,7 @@ class AiAssistantService {
   // Sağlayıcı: 'local' (Dahili Çevrimdışı Qwen) veya 'gemini' (Google Gemini API)
   String _provider = 'local';
   String _geminiApiKey = '';
-  String _geminiModel = 'gemini-2.0-flash';
+  String _geminiModel = 'gemini-3.8-flash';
 
   String get provider => _provider;
   bool get isLocal => _provider == 'local';
@@ -58,9 +58,9 @@ class AiAssistantService {
 
   String get selectedModel {
     if (isGemini) {
-      if (_geminiModel == 'gemini-2.0-flash') return 'Gemini 2.0 Flash';
-      if (_geminiModel == 'gemini-1.5-flash') return 'Gemini 1.5 Flash';
-      if (_geminiModel == 'gemini-1.5-pro') return 'Gemini 1.5 Pro';
+      if (_geminiModel == 'gemini-3.8-flash') return 'Gemini 3.8 Flash';
+      if (_geminiModel == 'gemini-3.8-pro') return 'Gemini 3.8 Pro';
+      if (_geminiModel == 'gemini-3.6-flash') return 'Gemini 3.6 Flash';
       return _geminiModel;
     }
     return Platform.isWindows

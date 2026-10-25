@@ -753,16 +753,16 @@ class _SettingsDialogState extends State<SettingsDialog> with SingleTickerProvid
                         style: GoogleFonts.jetBrainsMono(fontSize: 11, color: const Color(0xFF7AA2F7)),
                         items: const [
                           DropdownMenuItem(
-                            value: 'gemini-2.0-flash',
-                            child: Text('gemini-2.0-flash (Önerilen)'),
+                            value: 'gemini-3.8-flash',
+                            child: Text('gemini-3.8-flash (Önerilen / Hızlı)'),
                           ),
                           DropdownMenuItem(
-                            value: 'gemini-1.5-flash',
-                            child: Text('gemini-1.5-flash'),
+                            value: 'gemini-3.8-pro',
+                            child: Text('gemini-3.8-pro (Derin Analiz)'),
                           ),
                           DropdownMenuItem(
-                            value: 'gemini-1.5-pro',
-                            child: Text('gemini-1.5-pro'),
+                            value: 'gemini-3.6-flash',
+                            child: Text('gemini-3.6-flash (Hafif)'),
                           ),
                         ],
                         onChanged: (val) {
