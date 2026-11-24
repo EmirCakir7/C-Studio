@@ -1,38 +1,37 @@
-## 🌟 C-Studio v1.3.0 Sürüm Notları / Release Notes
+## 🌟 C-Studio v1.3.0 Release Notes
 
-### 🚀 Neler Yeni? (What's New)
+### 🚀 What's New
 
-1. **Çift Yapay Zeka Motoru: Yerel Qwen 3B + Google Gemini API**
-   - **Qwen 2.5 Coder 3B (Sweet Spot):** Dahili yerel yapay zeka modeli 1.5B'den **Qwen 2.5 Coder 3B Instruct** sürümüne yükseltildi. C işaretçileri (pointers), dinamik bellek (`malloc`/`free`) ve algoritma mantığında çok daha zeki ve öğretici yanıtlar verirken bilgisayar kaynaklarını yormaz.
-   - **Google Gemini API (Bulut / Cloud):** Sıfır sistem ve RAM yükü isteyenler için **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-4-argon`) desteği eklendi. Google AI Studio'dan alacağınız ücretsiz API anahtarınızla anında buluttan analiz alabilirsiniz.
-   - **İsteğe Bağlı Başlatma / Durdurma Kontrolleri:** Sohbet ekranına **"Yapay Zekayı Başlat"** butonu, canlı RAM yükleme durumu, ilerleme çubuğu ve RAM'i istediğiniz an sıfırlamak için **"Durdur"** butonu eklendi.
+1. **Dual AI Engine: Local Qwen 3B + Google Gemini API**
+   - **Qwen 2.5 Coder 3B (Sweet Spot):** The built-in local AI model has been upgraded from 1.5B to **Qwen 2.5 Coder 3B Instruct**. It gives much smarter and more instructive answers on C pointers, dynamic memory (`malloc`/`free`) and algorithm logic, without straining your computer's resources.
+   - **Google Gemini API (Cloud):** For those who want zero system and RAM load, support for the **Google Gemini API** (`gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-4-argon`) has been added. With a free API key from Google AI Studio you can get instant analysis from the cloud.
+   - **On-Demand Start / Stop Controls:** The chat screen now has a **"Start AI"** button, a live RAM loading status, a progress bar, and a **"Stop"** button to free the RAM whenever you want.
 
-2. **2 Ayrı Windows Sürümü (Two Windows Editions):**
-   - **`C-Studio-v1.3.0-Windows-x64-With-AI.zip` (~2.1 GB):** **Önerilen / Tak-Çalıştır.** Qwen 2.5 Coder 3B modeliyle tam paketlenmiş olarak gelir. İnternet gerektirmez, doğrudan çevrimdışı çalışır.
-   - **`C-Studio-v1.3.0-Windows-x64-Slim.zip` (~36 MB):** **Ultra Hafif.** Yapay zeka ağırlıkları hariç tüm derleyici ve IDE araçlarını içerir. İçerisindeki **tek tuşla indirme butonuyla** 3B modeli uygulama içinden doğrudan indirebilir veya Google Gemini API modunu kullanabilirsiniz.
+2. **Two Separate Windows Editions:**
+   - **`C-Studio-v1.3.0-Windows-x64-With-AI.zip` (~2.1 GB):** **Recommended / Plug-and-Play.** Comes fully bundled with the Qwen 2.5 Coder 3B model. No internet required, it runs offline right away.
+   - **`C-Studio-v1.3.0-Windows-x64-Slim.zip` (~36 MB):** **Ultra-Light.** Contains all compiler and IDE tools except the AI weights. You can download the 3B model directly inside the app with the **one-click download button**, or use the Google Gemini API mode.
 
-3. **Yenilenen & Sadeleştirilen Dokümantasyon:**
-   - GitHub `README.md` sayfası çok daha anlaşılır, şık ve özet hale getirildi.
-
----
-
-### ⚠️ Önemli Uyarı: Çeviri Aracı & Özel Dil Paketleri (Beta)
-Uygulama ile birlikte gelen dil oluşturma aracı (`C-Studio_Language_Creator.exe`) ve `.cstudio-lang` içe aktarıcısı şu anda **aktif geliştirme (Beta)** aşamasındadır. Topluluk tarafından yapılan çeviriler henüz uygulamanın tüm pencerelerinde %100 eksiksiz veya kusursuz çalışmayabilir, bazı alanlarda küçük görsel veya yedek metin hataları görülebilir. Dil desteği sonraki güncellemelerde daha da olgunlaştırılacaktır.
+3. **Refreshed & Simplified Documentation:**
+   - The GitHub `README.md` page is now much clearer, more polished and more concise.
 
 ---
 
-### 🗺️ Sonraki Sürümde Planlananlar (Upcoming Roadmap)
-- 📱 **Resmi Android Sürümü:** Dokunmatik özel sembol barı ve GNU GCC bulut derleyicisi içeren Android sürümü sonraki büyük güncellemede resmi olarak yayınlanacaktır.
-- 🌐 **Resmi Dil Genişlemeleri:** Resmi 🇨🇳 Çince (Basitleştirilmiş), 🇪🇸 İspanyolca ve 🇷🇺 Rusça yerel dil paketleri.
-- 🐞 **Görsel Hata Ayıklayıcı:** Entegre GDB görsel debugger desteği.
+### ⚠️ Important Notice: Translation Tool & Custom Language Packs (Beta)
+The language creator tool (`C-Studio_Language_Creator.exe`) and the `.cstudio-lang` importer that ship with the app are currently in **active development (Beta)**. Community translations may not yet work 100% completely or flawlessly in every window of the app, and minor visual or fallback text issues may appear in some places. Language support will mature further in upcoming updates.
 
 ---
 
-### 🎖️ Katkıda Bulunanlar & Teşekkürler (Credits & Attributions)
+### 🗺️ Planned for the Next Release (Upcoming Roadmap)
+- 📱 **Official Android Release:** An Android version with a touch-friendly special symbol bar and a GNU GCC cloud compiler will be officially released in the next major update.
+- 🌐 **Official Language Expansions:** Official local language packs for 🇨🇳 Chinese (Simplified), 🇪🇸 Spanish and 🇷🇺 Russian.
+- 🐞 **Visual Debugger:** Integrated GDB visual debugger support.
 
-* **Emir Çakır** ([@EmirCakir7](https://github.com/EmirCakir7)) – Proje Kurucusu, Baş Geliştirici ve Sistem Mimarı.
-* **Fabrice Bellard & TCC Ekibi** – C-Studio'nun kalbinde yer alan gömülü ve milisaniyeler içinde derleme yapan 64-bit Tiny C Compiler motorunun yaratıcıları.
-* **Georgi Gerganov & llama.cpp Topluluğu** – Çevrimdışı yerel yapay zeka sunucusunu (`llama-server.exe`) sağlayan açık kaynaklı GGUF çıkarım motoru.
-* **Qwen Ekibi (Alibaba Cloud)** – Kompakt boyutuna rağmen olağanüstü C kodlama yeteneği sunan **Qwen 2.5 Coder 3B** modelinin geliştiricileri.
-* **Google DeepMind & Google Gemini Ekibi** – Ultra hızlı bulut yapay zeka deneyimi sunan yeni nesil **Gemini 3.8 / 3.6 API** mimarisi.
-* **Flutter & Dart Topluluğu (Google)** – Modern ve akıcı arayüz altyapısı.
+---
+
+### 🎖️ Credits & Attributions
+
+* **Fabrice Bellard & TCC Team** – Creators of the embedded 64-bit Tiny C Compiler engine at the heart of C-Studio, which compiles in milliseconds.
+* **Georgi Gerganov & the llama.cpp Community** – The open-source GGUF inference engine that powers the offline local AI server (`llama-server.exe`).
+* **Qwen Team (Alibaba Cloud)** – Developers of the **Qwen 2.5 Coder 3B** model, which delivers outstanding C coding ability despite its compact size.
+* **Google DeepMind & Google Gemini Team** – The next-generation **Gemini 3.8 / 3.6 API** architecture that provides an ultra-fast cloud AI experience.
+* **Flutter & Dart Community (Google)** – The modern and fluid UI foundation.

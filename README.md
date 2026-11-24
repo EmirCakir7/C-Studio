@@ -62,7 +62,6 @@
 
 C-Studio is made possible thanks to world-class open-source projects and developer communities:
 
-* **Emir Çakır** ([@EmirCakir7](https://github.com/EmirCakir7)) – Project Creator, Lead Developer, and System Architect.
 * **[Fabrice Bellard](https://bellard.org/) & TCC Team** – Creators and maintainers of the **Tiny C Compiler (TCC)**, providing the embedded, ultra-fast 64-bit compilation engine.
 * **[Georgi Gerganov](https://github.com/ggerganov) & [llama.cpp](https://github.com/ggerganov/llama.cpp)** – The groundbreaking C/C++ offline LLM inference framework powering C-Studio's local offline AI engine (`llama-server.exe`).
 * **[Qwen Team (Alibaba Cloud)](https://github.com/QwenLM)** – Creators of the remarkable **Qwen 2.5 Coder** model family (`Qwen2.5-Coder-3B-Instruct`), delivering state-of-the-art C coding intelligence in compact weights.
